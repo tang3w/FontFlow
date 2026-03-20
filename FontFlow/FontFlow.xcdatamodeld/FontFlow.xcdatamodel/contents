@@ -1,4 +1,50 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="1" systemVersion="11A491" minimumToolsVersion="Automatic" sourceLanguage="Swift" usedWithCloudKit="false" userDefinedModelVersionIdentifier="">
-    <elements/>
+    <entity name="FontRecord" representedClassName="FontRecord" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="postScriptName" attributeType="String"/>
+        <attribute name="displayName" attributeType="String"/>
+        <attribute name="familyName" attributeType="String"/>
+        <attribute name="styleName" attributeType="String"/>
+        <attribute name="filePath" attributeType="String"/>
+        <attribute name="bookmarkData" optional="YES" attributeType="Binary"/>
+        <attribute name="fileSize" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <attribute name="isActivated" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="isFavorite" attributeType="Boolean" defaultValueString="NO" usesScalarValueType="YES"/>
+        <attribute name="lastUsedDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="importedDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="isValid" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
+        <attribute name="duplicateGroupID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
+        <relationship name="family" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FontFamily" inverseName="fonts" inverseEntity="FontFamily"/>
+        <relationship name="tags" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Tag" inverseName="fonts" inverseEntity="Tag"/>
+        <relationship name="collections" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FontCollection" inverseName="fonts" inverseEntity="FontCollection"/>
+        <relationship name="projectSets" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="ProjectSet" inverseName="fonts" inverseEntity="ProjectSet"/>
+    </entity>
+    <entity name="FontFamily" representedClassName="FontFamily" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" attributeType="String"/>
+        <relationship name="fonts" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="FontRecord" inverseName="family" inverseEntity="FontRecord"/>
+    </entity>
+    <entity name="Tag" representedClassName="Tag" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" attributeType="String"/>
+        <attribute name="color" optional="YES" attributeType="String"/>
+        <relationship name="fonts" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FontRecord" inverseName="tags" inverseEntity="FontRecord"/>
+    </entity>
+    <entity name="FontCollection" representedClassName="FontCollection" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" attributeType="String"/>
+        <attribute name="createdDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="sortOrder" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="fonts" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FontRecord" inverseName="collections" inverseEntity="FontRecord"/>
+    </entity>
+    <entity name="ProjectSet" representedClassName="ProjectSet" syncable="YES" codeGenerationType="class">
+        <attribute name="id" attributeType="UUID" usesScalarValueType="NO"/>
+        <attribute name="name" attributeType="String"/>
+        <attribute name="clientName" optional="YES" attributeType="String"/>
+        <attribute name="createdDate" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="lastActivatedDate" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="sortOrder" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
+        <relationship name="fonts" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FontRecord" inverseName="projectSets" inverseEntity="FontRecord"/>
+    </entity>
 </model>

@@ -33,7 +33,7 @@ Build the must-have foundation: a credible, usable font manager that lets users 
 │  └────────────┘ └────────────┘ └──────────────┘ │
 ├──────────────────────────────────────────────────┤
 │  Core Data Model                                 │
-│  FontRecord · FontFamily · Tag · Collection ·    │
+│  FontRecord · FontFamily · Tag · FontCollection · │
 │  ProjectSet · SmartFilter                        │
 └──────────────────────────────────────────────────┘
 ```
@@ -55,14 +55,14 @@ Design the schema first — everything depends on it.
 | **FontRecord** | `id` (UUID), `postScriptName`, `displayName`, `familyName`, `styleName`, `filePath`, `bookmarkData` (Binary), `fileSize` (Int64), `isActivated` (Bool), `isFavorite` (Bool), `lastUsedDate` (Date?), `importedDate` (Date), `isValid` (Bool), `duplicateGroupID` (UUID?) | One record per font face. `bookmarkData` stores a security-scoped bookmark for sandbox-safe re-access. |
 | **FontFamily** | `name` (String), `id` (UUID) | Groups FontRecords that share a family name. Relationship: `fonts` ↔ `family` (one-to-many). |
 | **Tag** | `id` (UUID), `name` (String), `color` (String?) | User-created labels. Many-to-many with FontRecord. |
-| **Collection** | `id` (UUID), `name` (String), `createdDate` (Date), `sortOrder` (Int16) | Manual grouping. Many-to-many with FontRecord. |
-| **ProjectSet** | `id` (UUID), `name` (String), `clientName` (String?), `createdDate` (Date), `lastActivatedDate` (Date?), `sortOrder` (Int16) | Project-scoped font group. Many-to-many with FontRecord. |
+| **FontCollection** | `id` (UUID), `name` (String), `createdDate` (Date), `sortOrder` (Int64) | Manual grouping. Many-to-many with FontRecord. Renamed from `Collection` to avoid Swift namespace conflict. |
+| **ProjectSet** | `id` (UUID), `name` (String), `clientName` (String?), `createdDate` (Date), `lastActivatedDate` (Date?), `sortOrder` (Int64) | Project-scoped font group. Many-to-many with FontRecord. |
 
 ### Relationships
 
 - `FontRecord.family` → `FontFamily` (many-to-one)
 - `FontRecord.tags` ↔ `Tag.fonts` (many-to-many)
-- `FontRecord.collections` ↔ `Collection.fonts` (many-to-many)
+- `FontRecord.collections` ↔ `FontCollection.fonts` (many-to-many)
 - `FontRecord.projectSets` ↔ `ProjectSet.fonts` (many-to-many)
 
 ### Rationale
