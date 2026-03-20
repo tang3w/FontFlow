@@ -38,7 +38,7 @@ Build the must-have foundation: a credible, usable font manager that lets users 
 └──────────────────────────────────────────────────┘
 ```
 
-**UI**: Three-column `NSSplitViewController` — sidebar for navigation, center for the font list, trailing for preview/comparison. All defined in `Main.storyboard`.
+**UI**: Three-column `NSSplitViewController` — sidebar for navigation, center for the font list, trailing for preview/comparison. All built programmatically in code. `Main.storyboard` is retained only for the menu bar.
 
 **Services**: Plain Swift classes that encapsulate business logic. No protocol-heavy abstractions. Each service receives an `NSManagedObjectContext` where needed.
 
@@ -108,7 +108,7 @@ Design the schema first — everything depends on it.
 **What**: Build the three-column layout and wire it to Core Data with basic navigation.
 
 **Deliverables**:
-- `MainSplitViewController` (`NSSplitViewController`) set as the window's content controller in the storyboard.
+- `MainSplitViewController` (`NSSplitViewController`) created programmatically and set as the window's content controller in code (not via storyboard).
 - **Sidebar** (`SidebarViewController`): outline view with sections — Library (All Fonts, Favorites, Recently Added), Collections, Project Sets, Tags. Powered by a static/dynamic data source.
 - **Font List** (`FontListViewController`): `NSTableView` (or `NSCollectionView` for grid mode) showing font names with a small preview. Backed by `NSFetchedResultsController` (or manual fetch + `NSArrayController`).
 - **Detail Pane** (`FontDetailViewController`): placeholder for preview (built in M4).

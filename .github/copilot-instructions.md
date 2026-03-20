@@ -5,7 +5,7 @@
 FontFlow is a macOS desktop application for font management. Built with Swift 5 and AppKit (Cocoa), targeting macOS 26.2.
 
 - **Bundle ID**: `tips.tty.FontFlow`
-- **UI**: Storyboard-based (`Main.storyboard`), not SwiftUI
+- **UI**: Programmatic AppKit (all UI built in code). `Main.storyboard` is retained only for the menu bar/menus. Not SwiftUI.
 - **Persistence**: Core Data (model in `FontFlow.xcdatamodeld`)
 - **No external dependencies** — no SPM, CocoaPods, or Carthage
 
@@ -32,7 +32,7 @@ xcodebuild -project FontFlow.xcodeproj -scheme FontFlow clean
 
 - **AppDelegate** (`FontFlow/AppDelegate.swift`): App lifecycle, Core Data stack (`NSPersistentContainer`), undo/redo management, save-on-terminate with user confirmation dialog.
 - **ViewController** (`FontFlow/ViewController.swift`): Main view controller (`NSViewController`).
-- **Storyboard**: UI is defined in `FontFlow/Base.lproj/Main.storyboard`.
+- **UI approach**: All views and view controllers are created programmatically (no Interface Builder for UI layout). `Main.storyboard` exists solely for the main menu bar.
 
 ## Testing Conventions
 
