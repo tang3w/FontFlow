@@ -11,6 +11,12 @@ Build the must-have foundation: a credible, usable font manager that lets users 
 - **Core Data is the store.** The persistent container is already wired up. Define entities carefully once; keep the schema normalized but not over-relational.
 - **Build vertically.** Each milestone delivers a working slice of the app, not a horizontal layer.
 
+## Implementation Principles
+
+- **Solid foundations first.** Each milestone must build a solid foundation for the milestones that follow. Prioritize correctness, clear interfaces, and stable contracts over speed.
+- **Simple and clean.** The implementation should be easy to understand and easy to extend. Favor readability and clarity in every file.
+- **Do not over-design.** Solve the problem at hand. Resist adding abstractions, generics, or extensibility points that aren't needed by the current milestone.
+
 ---
 
 ## Architecture Overview
