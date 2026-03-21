@@ -14,7 +14,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 
     func applicationDidFinishLaunching(_ aNotification: Notification) {
-        // Insert code here to initialize your application
+        guard let window = NSApplication.shared.windows.first else { return }
+        let context = persistentContainer.viewContext
+        let splitVC = MainSplitViewController(managedObjectContext: context)
+        window.contentViewController = splitVC
+        window.title = "FontFlow"
+        window.setContentSize(NSSize(width: 1100, height: 700))
+        window.minSize = NSSize(width: 800, height: 500)
+        window.center()
     }
 
     func applicationWillTerminate(_ aNotification: Notification) {
