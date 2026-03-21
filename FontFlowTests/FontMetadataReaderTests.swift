@@ -11,12 +11,9 @@ import Foundation
 
 struct FontMetadataReaderTests {
 
-    /// Anchor class for locating the test bundle's resources.
-    private class BundleAnchor {}
-
     /// Returns the URL for a font file bundled in the test target's resources.
     private static func bundledFontURL(_ filename: String) throws -> URL {
-        let bundle = Bundle(for: BundleAnchor.self)
+        let bundle = Bundle(for: TestBundleAnchor.self)
         let name = (filename as NSString).deletingPathExtension
         let ext = (filename as NSString).pathExtension
         guard let url = bundle.url(forResource: name, withExtension: ext) else {
