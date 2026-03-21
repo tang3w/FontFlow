@@ -56,6 +56,7 @@ class FontListViewController: NSViewController {
     private var familyNodes: [FontFamilyNode] = []
     private var fontsByObjectID: [NSManagedObjectID: FontRecord] = [:]
     private var currentViewMode: FontViewMode = .list
+    private var collapsedSections: Set<String> = []
 
     // MARK: - Lifecycle
 
@@ -169,8 +170,16 @@ class FontListViewController: NSViewController {
             ) as! FontSectionHeaderView
 
             let section = self.dataSource.snapshot().sectionIdentifiers[indexPath.section]
-            let itemCount = self.dataSource.snapshot().numberOfItems(inSection: section)
-            headerView.configure(familyName: section.familyName, count: itemCount)
+            let isCollapsed = self.collapsedSections.contains(section.familyName)
+            let totalCount = self.familyNodes.first(where: { $0.familyName == section.familyName })?.fonts.count ?? 0
+            headerView.configure(
+                familyName: section.familyName,
+                count: totalCount,
+                isCollapsed: isCollapsed,
+                onToggle: { [weak self] in
+                    self?.toggleSection(section.familyName)
+                }
+            )
             return headerView
         }
     }
@@ -183,11 +192,35 @@ class FontListViewController: NSViewController {
         for node in familyNodes {
             let section = FontSectionIdentifier(familyName: node.familyName)
             snapshot.appendSections([section])
-            let items = node.fonts.map { FontItemIdentifier(objectID: $0.objectID) }
-            snapshot.appendItems(items, toSection: section)
+            if !collapsedSections.contains(node.familyName) {
+                let items = node.fonts.map { FontItemIdentifier(objectID: $0.objectID) }
+                snapshot.appendItems(items, toSection: section)
+            }
         }
 
         dataSource.apply(snapshot, animatingDifferences: animatingDifferences)
+    }
+
+    private func toggleSection(_ familyName: String) {
+        if collapsedSections.contains(familyName) {
+            collapsedSections.remove(familyName)
+        } else {
+            collapsedSections.insert(familyName)
+        }
+        var snapshot = NSDiffableDataSourceSnapshot<FontSectionIdentifier, FontItemIdentifier>()
+
+        for node in familyNodes {
+            let section = FontSectionIdentifier(familyName: node.familyName)
+            snapshot.appendSections([section])
+            if !collapsedSections.contains(node.familyName) {
+                let items = node.fonts.map { FontItemIdentifier(objectID: $0.objectID) }
+                snapshot.appendItems(items, toSection: section)
+            }
+        }
+
+        let toggledSection = FontSectionIdentifier(familyName: familyName)
+        snapshot.reloadSections([toggledSection])
+        dataSource.apply(snapshot, animatingDifferences: true)
     }
 
     // MARK: - Layouts

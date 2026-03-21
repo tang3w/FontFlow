@@ -12,6 +12,21 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     static let elementKind = "SectionHeader"
     static let identifier = NSUserInterfaceItemIdentifier("FontSectionHeader")
 
+    var onToggle: (() -> Void)?
+
+    private let chevronImageView: NSImageView = {
+        let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .medium)
+        let image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: "Disclosure")!
+            .withSymbolConfiguration(config)!
+        let imageView = NSImageView(image: image)
+        imageView.contentTintColor = .secondaryLabelColor
+
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.setContentHuggingPriority(.required, for: .horizontal)
+        imageView.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return imageView
+    }()
+
     private let nameLabel: NSTextField = {
         let label = NSTextField(labelWithString: "")
         label.font = .systemFont(ofSize: 13, weight: .semibold)
@@ -35,11 +50,16 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         wantsLayer = true
         layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.85).cgColor
 
+        addSubview(chevronImageView)
         addSubview(nameLabel)
         addSubview(countLabel)
 
         NSLayoutConstraint.activate([
-            nameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            chevronImageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            chevronImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            chevronImageView.widthAnchor.constraint(equalToConstant: 12),
+
+            nameLabel.leadingAnchor.constraint(equalTo: chevronImageView.trailingAnchor, constant: 4),
             nameLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
             nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: countLabel.leadingAnchor, constant: -8),
 
@@ -53,14 +73,30 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         fatalError("init(coder:) is not supported")
     }
 
-    func configure(familyName: String, count: Int) {
+    func configure(familyName: String, count: Int, isCollapsed: Bool, onToggle: @escaping () -> Void) {
         nameLabel.stringValue = familyName
         countLabel.stringValue = "\(count)"
+        self.onToggle = onToggle
+        updateChevron(collapsed: isCollapsed)
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
         nameLabel.stringValue = ""
         countLabel.stringValue = ""
+        onToggle = nil
+        updateChevron(collapsed: false)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        onToggle?()
+    }
+
+    private func updateChevron(collapsed: Bool) {
+        let symbolName = collapsed ? "chevron.right" : "chevron.down"
+        let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .medium)
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Disclosure")!
+            .withSymbolConfiguration(config)!
+        chevronImageView.image = image
     }
 }
