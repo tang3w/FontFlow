@@ -14,9 +14,9 @@ protocol FontListSelectionDelegate: AnyObject {
     func fontListDidSelectFont(_ fontList: FontListViewController, font: FontRecord?)
 }
 
-// MARK: - Outline Data Model
+// MARK: - Data Model
 
-/// A family group in the font list outline.
+/// A family group in the font list.
 class FontFamilyNode {
     let familyName: String
     let fonts: [FontRecord]
@@ -27,6 +27,23 @@ class FontFamilyNode {
     }
 }
 
+// MARK: - View Mode
+
+enum FontViewMode: Int {
+    case list = 0
+    case grid = 1
+}
+
+// MARK: - Diffable Data Source Identifiers
+
+struct FontSectionIdentifier: Hashable {
+    let familyName: String
+}
+
+struct FontItemIdentifier: Hashable {
+    let objectID: NSManagedObjectID
+}
+
 // MARK: - FontListViewController
 
 class FontListViewController: NSViewController {
@@ -34,11 +51,11 @@ class FontListViewController: NSViewController {
     weak var delegate: FontListSelectionDelegate?
     var managedObjectContext: NSManagedObjectContext!
 
-    private var outlineView: NSOutlineView!
+    private var collectionView: NSCollectionView!
+    private var dataSource: NSCollectionViewDiffableDataSource<FontSectionIdentifier, FontItemIdentifier>!
     private var familyNodes: [FontFamilyNode] = []
-
-    private static let familyCellIdentifier = NSUserInterfaceItemIdentifier("FamilyCell")
-    private static let fontCellIdentifier = NSUserInterfaceItemIdentifier("FontCell")
+    private var fontsByObjectID: [NSManagedObjectID: FontRecord] = [:]
+    private var currentViewMode: FontViewMode = .list
 
     // MARK: - Lifecycle
 
@@ -47,21 +64,31 @@ class FontListViewController: NSViewController {
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
 
-        outlineView = NSOutlineView()
-        outlineView.headerView = nil
-        outlineView.style = .plain
-        outlineView.rowHeight = 44
-        outlineView.indentationPerLevel = 20
-        outlineView.dataSource = self
-        outlineView.delegate = self
+        collectionView = NSCollectionView()
+        collectionView.collectionViewLayout = makeListLayout()
+        collectionView.isSelectable = true
+        collectionView.allowsMultipleSelection = false
+        collectionView.backgroundColors = [.clear]
+        collectionView.delegate = self
 
-        let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("FontColumn"))
-        column.isEditable = false
-        outlineView.addTableColumn(column)
-        outlineView.outlineTableColumn = column
+        collectionView.register(
+            FontListItem.self,
+            forItemWithIdentifier: FontListItem.identifier
+        )
+        collectionView.register(
+            FontGridItem.self,
+            forItemWithIdentifier: FontGridItem.identifier
+        )
+        collectionView.register(
+            FontSectionHeaderView.self,
+            forSupplementaryViewOfKind: FontSectionHeaderView.elementKind,
+            withIdentifier: FontSectionHeaderView.identifier
+        )
 
-        scrollView.documentView = outlineView
+        scrollView.documentView = collectionView
         view = scrollView
+
+        configureDataSource()
     }
 
     // MARK: - Public
@@ -76,14 +103,161 @@ class FontListViewController: NSViewController {
         ]
         let records = (try? managedObjectContext.fetch(request)) ?? []
         familyNodes = buildFamilyNodes(from: records)
-        outlineView.reloadData()
 
-        // Expand all families by default
-        for node in familyNodes {
-            outlineView.expandItem(node)
+        fontsByObjectID = [:]
+        for record in records {
+            fontsByObjectID[record.objectID] = record
         }
 
+        applySnapshot(animatingDifferences: false)
         delegate?.fontListDidSelectFont(self, font: nil)
+    }
+
+    /// Switches between list and grid view modes.
+    func setViewMode(_ mode: FontViewMode) {
+        guard mode != currentViewMode else { return }
+        currentViewMode = mode
+
+        collectionView.collectionViewLayout = mode == .list ? makeListLayout() : makeGridLayout()
+
+        // Re-apply snapshot to force item re-creation with the correct item class.
+        var snapshot = dataSource.snapshot()
+        snapshot.reloadSections(snapshot.sectionIdentifiers)
+        dataSource.apply(snapshot, animatingDifferences: false)
+    }
+
+    // MARK: - Data Source
+
+    private func configureDataSource() {
+        dataSource = NSCollectionViewDiffableDataSource<FontSectionIdentifier, FontItemIdentifier>(
+            collectionView: collectionView
+        ) { [weak self] collectionView, indexPath, itemIdentifier in
+            guard let self = self,
+                  let record = self.fontsByObjectID[itemIdentifier.objectID] else {
+                return collectionView.makeItem(
+                    withIdentifier: FontListItem.identifier,
+                    for: indexPath
+                )
+            }
+
+            switch self.currentViewMode {
+            case .list:
+                let item = collectionView.makeItem(
+                    withIdentifier: FontListItem.identifier,
+                    for: indexPath
+                ) as! FontListItem
+                item.configure(with: record)
+                return item
+            case .grid:
+                let item = collectionView.makeItem(
+                    withIdentifier: FontGridItem.identifier,
+                    for: indexPath
+                ) as! FontGridItem
+                item.configure(with: record)
+                return item
+            }
+        }
+
+        dataSource.supplementaryViewProvider = { [weak self] collectionView, kind, indexPath in
+            guard kind == FontSectionHeaderView.elementKind,
+                  let self = self else { return nil }
+
+            let headerView = collectionView.makeSupplementaryView(
+                ofKind: kind,
+                withIdentifier: FontSectionHeaderView.identifier,
+                for: indexPath
+            ) as! FontSectionHeaderView
+
+            let section = self.dataSource.snapshot().sectionIdentifiers[indexPath.section]
+            let itemCount = self.dataSource.snapshot().numberOfItems(inSection: section)
+            headerView.configure(familyName: section.familyName, count: itemCount)
+            return headerView
+        }
+    }
+
+    // MARK: - Snapshot
+
+    private func applySnapshot(animatingDifferences: Bool) {
+        var snapshot = NSDiffableDataSourceSnapshot<FontSectionIdentifier, FontItemIdentifier>()
+
+        for node in familyNodes {
+            let section = FontSectionIdentifier(familyName: node.familyName)
+            snapshot.appendSections([section])
+            let items = node.fonts.map { FontItemIdentifier(objectID: $0.objectID) }
+            snapshot.appendItems(items, toSection: section)
+        }
+
+        dataSource.apply(snapshot, animatingDifferences: animatingDifferences)
+    }
+
+    // MARK: - Layouts
+
+    private func makeListLayout() -> NSCollectionViewCompositionalLayout {
+        NSCollectionViewCompositionalLayout { _, environment in
+            let itemSize = NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1.0),
+                heightDimension: .absolute(44)
+            )
+            let item = NSCollectionLayoutItem(layoutSize: itemSize)
+
+            let groupSize = NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1.0),
+                heightDimension: .absolute(44)
+            )
+            let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+
+            let section = NSCollectionLayoutSection(group: group)
+            section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0)
+
+            let headerSize = NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1.0),
+                heightDimension: .absolute(32)
+            )
+            let header = NSCollectionLayoutBoundarySupplementaryItem(
+                layoutSize: headerSize,
+                elementKind: FontSectionHeaderView.elementKind,
+                alignment: .top
+            )
+            header.pinToVisibleBounds = true
+            section.boundarySupplementaryItems = [header]
+
+            return section
+        }
+    }
+
+    private func makeGridLayout() -> NSCollectionViewCompositionalLayout {
+        NSCollectionViewCompositionalLayout { _, environment in
+            let itemSize = NSCollectionLayoutSize(
+                widthDimension: .absolute(180),
+                heightDimension: .absolute(200)
+            )
+            let item = NSCollectionLayoutItem(layoutSize: itemSize)
+
+            let groupSize = NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1.0),
+                heightDimension: .absolute(200)
+            )
+            let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+            group.interItemSpacing = .fixed(8)
+
+            let section = NSCollectionLayoutSection(group: group)
+            section.interGroupSpacing = 8
+            section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 12, trailing: 12)
+
+            let headerSize = NSCollectionLayoutSize(
+                widthDimension: .fractionalWidth(1.0),
+                heightDimension: .absolute(32)
+            )
+            let header = NSCollectionLayoutBoundarySupplementaryItem(
+                layoutSize: headerSize,
+                elementKind: FontSectionHeaderView.elementKind,
+                alignment: .top
+            )
+            header.pinToVisibleBounds = true
+            section.boundarySupplementaryItems = [header]
+
+            return section
+        }
     }
 
     // MARK: - Grouping
@@ -113,162 +287,22 @@ class FontListViewController: NSViewController {
     }
 }
 
-// MARK: - NSOutlineViewDataSource
+// MARK: - NSCollectionViewDelegate
 
-extension FontListViewController: NSOutlineViewDataSource {
+extension FontListViewController: NSCollectionViewDelegate {
 
-    func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
-        if item == nil { return familyNodes.count }
-        if let familyNode = item as? FontFamilyNode {
-            // Single-font families are displayed as leaf rows — no children to expand.
-            return familyNode.fonts.count > 1 ? familyNode.fonts.count : 0
-        }
-        return 0
-    }
-
-    func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
-        if item == nil { return familyNodes[index] }
-        if let familyNode = item as? FontFamilyNode {
-            return familyNode.fonts[index]
-        }
-        fatalError("Unexpected outline item")
-    }
-
-    func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
-        if let familyNode = item as? FontFamilyNode {
-            return familyNode.fonts.count > 1
-        }
-        return false
-    }
-}
-
-// MARK: - NSOutlineViewDelegate
-
-extension FontListViewController: NSOutlineViewDelegate {
-
-    func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
-        if let familyNode = item as? FontFamilyNode {
-            return makeFamilyCell(familyNode: familyNode)
-        }
-        if let record = item as? FontRecord {
-            return makeFontCell(record: record, isChild: true)
-        }
-        return nil
-    }
-
-    func outlineView(_ outlineView: NSOutlineView, shouldSelectItem item: Any) -> Bool {
-        // Allow selecting family rows only for single-font families (they act as direct font rows).
-        if let familyNode = item as? FontFamilyNode {
-            return familyNode.fonts.count == 1
-        }
-        return item is FontRecord
-    }
-
-    func outlineViewSelectionDidChange(_ notification: Notification) {
-        let row = outlineView.selectedRow
-        guard row >= 0 else {
-            delegate?.fontListDidSelectFont(self, font: nil)
+    func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
+        guard let indexPath = indexPaths.first,
+              let itemIdentifier = dataSource.itemIdentifier(for: indexPath),
+              let record = fontsByObjectID[itemIdentifier.objectID] else {
             return
         }
+        delegate?.fontListDidSelectFont(self, font: record)
+    }
 
-        let item = outlineView.item(atRow: row)
-        if let record = item as? FontRecord {
-            delegate?.fontListDidSelectFont(self, font: record)
-        } else if let familyNode = item as? FontFamilyNode, familyNode.fonts.count == 1 {
-            delegate?.fontListDidSelectFont(self, font: familyNode.fonts.first)
-        } else {
+    func collectionView(_ collectionView: NSCollectionView, didDeselectItemsAt indexPaths: Set<IndexPath>) {
+        if collectionView.selectionIndexPaths.isEmpty {
             delegate?.fontListDidSelectFont(self, font: nil)
         }
-    }
-
-    // MARK: - Cell Factories
-
-    /// Cell for a family row. For single-font families, shows the font name in its own typeface.
-    /// For multi-font families, shows the family name with a font count badge.
-    private func makeFamilyCell(familyNode: FontFamilyNode) -> NSTableCellView {
-        let cell = NSTableCellView()
-        cell.identifier = Self.familyCellIdentifier
-
-        if familyNode.fonts.count == 1 {
-            // Single font — display like a flat font row.
-            let record = familyNode.fonts[0]
-            let displayName = record.displayName ?? record.postScriptName ?? "Unknown"
-            let textField = NSTextField(labelWithString: displayName)
-            textField.lineBreakMode = .byTruncatingTail
-            textField.translatesAutoresizingMaskIntoConstraints = false
-
-            if let psName = record.postScriptName,
-               let font = NSFont(name: psName, size: 15) {
-                textField.font = font
-            } else {
-                textField.font = .systemFont(ofSize: 15)
-            }
-
-            cell.addSubview(textField)
-            cell.textField = textField
-
-            NSLayoutConstraint.activate([
-                textField.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 8),
-                textField.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor, constant: -8),
-                textField.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-            ])
-        } else {
-            // Multi-font family — show family name and count.
-            let textField = NSTextField(labelWithString: familyNode.familyName)
-            textField.font = .systemFont(ofSize: 14, weight: .medium)
-            textField.lineBreakMode = .byTruncatingTail
-            textField.translatesAutoresizingMaskIntoConstraints = false
-
-            let countLabel = NSTextField(labelWithString: "\(familyNode.fonts.count)")
-            countLabel.font = .systemFont(ofSize: 11)
-            countLabel.textColor = .secondaryLabelColor
-            countLabel.alignment = .center
-            countLabel.translatesAutoresizingMaskIntoConstraints = false
-
-            cell.addSubview(textField)
-            cell.addSubview(countLabel)
-            cell.textField = textField
-
-            NSLayoutConstraint.activate([
-                textField.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 8),
-                textField.trailingAnchor.constraint(lessThanOrEqualTo: countLabel.leadingAnchor, constant: -8),
-                textField.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-
-                countLabel.trailingAnchor.constraint(equalTo: cell.trailingAnchor, constant: -12),
-                countLabel.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-                countLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 20),
-            ])
-        }
-
-        return cell
-    }
-
-    /// Cell for an individual font (child of a family group).
-    private func makeFontCell(record: FontRecord, isChild: Bool) -> NSTableCellView {
-        let cell = NSTableCellView()
-        cell.identifier = Self.fontCellIdentifier
-
-        let styleName = record.styleName ?? record.displayName ?? record.postScriptName ?? "Unknown"
-        let textField = NSTextField(labelWithString: styleName)
-        textField.lineBreakMode = .byTruncatingTail
-        textField.translatesAutoresizingMaskIntoConstraints = false
-
-        if let psName = record.postScriptName,
-           let font = NSFont(name: psName, size: 14) {
-            textField.font = font
-        } else {
-            textField.font = .systemFont(ofSize: 14)
-        }
-
-        cell.addSubview(textField)
-        cell.textField = textField
-
-        NSLayoutConstraint.activate([
-            textField.leadingAnchor.constraint(equalTo: cell.leadingAnchor, constant: 8),
-            textField.trailingAnchor.constraint(lessThanOrEqualTo: cell.trailingAnchor, constant: -8),
-            textField.centerYAnchor.constraint(equalTo: cell.centerYAnchor),
-        ])
-
-        return cell
     }
 }

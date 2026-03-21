@@ -165,6 +165,11 @@ class MainSplitViewController: NSSplitViewController {
         }
         updateFontList()
     }
+
+    @objc private func viewModeChanged(_ sender: NSToolbarItemGroup) {
+        let mode = FontViewMode(rawValue: sender.selectedIndex) ?? .list
+        fontListViewController.setViewMode(mode)
+    }
 }
 
 // MARK: - SidebarSelectionDelegate
@@ -211,7 +216,7 @@ extension MainSplitViewController: NSToolbarDelegate {
             let item = NSToolbarItemGroup(itemIdentifier: .viewMode, images: [
                 NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "List")!,
                 NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "Grid")!,
-            ], selectionMode: .selectOne, labels: ["List", "Grid"], target: nil, action: nil)
+            ], selectionMode: .selectOne, labels: ["List", "Grid"], target: self, action: #selector(viewModeChanged(_:)))
             item.selectedIndex = 0
             return item
 
