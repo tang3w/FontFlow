@@ -11,6 +11,22 @@ import Foundation
 
 struct FontMetadataReaderTests {
 
+    /// Anchor class for locating the test bundle's resources.
+    private class BundleAnchor {}
+
+    /// Returns the URL for a font file bundled in the test target's resources.
+    private static func bundledFontURL(_ filename: String) throws -> URL {
+        let bundle = Bundle(for: BundleAnchor.self)
+        let name = (filename as NSString).deletingPathExtension
+        let ext = (filename as NSString).pathExtension
+        guard let url = bundle.url(forResource: name, withExtension: ext) else {
+            throw FontMetadataReader.ReadError.fileNotFound(
+                URL(fileURLWithPath: filename)
+            )
+        }
+        return url
+    }
+
     // MARK: - Supported Extensions
 
     @Test func supportedExtensionsContainsExpectedFormats() {
@@ -18,10 +34,10 @@ struct FontMetadataReaderTests {
         #expect(FontMetadataReader.supportedExtensions == expected)
     }
 
-    // MARK: - Regular TTF Font
+    // MARK: - Regular TTF Font (Cousine — Apache 2.0)
 
     @Test func readSingleTTFFont() throws {
-        let url = URL(fileURLWithPath: "/System/Library/Fonts/Supplemental/Arial.ttf")
+        let url = try Self.bundledFontURL("Cousine-Regular.ttf")
         let metadata = try FontMetadataReader.readMetadata(from: url)
 
         #expect(metadata.faces.count == 1)
@@ -30,57 +46,38 @@ struct FontMetadataReaderTests {
         #expect(!metadata.isCollection)
 
         let face = try #require(metadata.faces.first)
-        #expect(face.familyName == "Arial")
+        #expect(face.familyName == "Cousine")
         #expect(face.styleName == "Regular")
         #expect(!face.postScriptName.isEmpty)
         #expect(!face.displayName.isEmpty)
         #expect(face.glyphCount > 0)
     }
 
-    // MARK: - Font Collection (TTC)
-
-    @Test func readTTCFontCollection() throws {
-        let url = URL(fileURLWithPath: "/System/Library/Fonts/Helvetica.ttc")
+    @Test func nonVariableFontHasNoAxes() throws {
+        let url = try Self.bundledFontURL("Cousine-Regular.ttf")
         let metadata = try FontMetadataReader.readMetadata(from: url)
 
-        #expect(metadata.faces.count > 1)
-        #expect(metadata.isCollection)
-        #expect(metadata.fileSize > 0)
-
-        // All faces should have valid metadata
-        for face in metadata.faces {
-            #expect(!face.postScriptName.isEmpty)
-            #expect(!face.familyName.isEmpty)
-            #expect(!face.displayName.isEmpty)
-            #expect(face.glyphCount > 0)
-        }
+        let face = try #require(metadata.faces.first)
+        #expect(!face.isVariable)
+        #expect(face.variationAxes.isEmpty)
     }
 
-    @Test func ttcFacesHaveDistinctPostScriptNames() throws {
-        let url = URL(fileURLWithPath: "/System/Library/Fonts/Helvetica.ttc")
-        let metadata = try FontMetadataReader.readMetadata(from: url)
-
-        let psNames = Set(metadata.faces.map(\.postScriptName))
-        #expect(psNames.count == metadata.faces.count, "Each face should have a unique PostScript name")
-    }
-
-    // MARK: - Variable Font
+    // MARK: - Variable Font (Inter — SIL OFL)
 
     @Test func readVariableFont() throws {
-        // SFNS (San Francisco) is a variable font on modern macOS
-        let url = URL(fileURLWithPath: "/System/Library/Fonts/SFNS.ttf")
+        let url = try Self.bundledFontURL("Inter-Variable.ttf")
         let metadata = try FontMetadataReader.readMetadata(from: url)
 
         #expect(!metadata.faces.isEmpty)
 
         let variableFaces = metadata.faces.filter(\.isVariable)
-        #expect(!variableFaces.isEmpty, "SFNS should contain at least one variable face")
+        #expect(!variableFaces.isEmpty, "Inter should contain at least one variable face")
 
         let variableFace = try #require(variableFaces.first)
         #expect(!variableFace.variationAxes.isEmpty)
 
-        // Variable fonts typically have a Weight axis
         let weightAxis = variableFace.variationAxes.first { $0.name == "Weight" }
+        #expect(weightAxis != nil, "Inter variable should have a Weight axis")
         if let weight = weightAxis {
             #expect(weight.minValue < weight.maxValue)
             #expect(weight.defaultValue >= weight.minValue)
@@ -89,7 +86,7 @@ struct FontMetadataReaderTests {
     }
 
     @Test func variationAxisValuesAreConsistent() throws {
-        let url = URL(fileURLWithPath: "/System/Library/Fonts/SFNS.ttf")
+        let url = try Self.bundledFontURL("Inter-Variable.ttf")
         let metadata = try FontMetadataReader.readMetadata(from: url)
 
         for face in metadata.faces {
@@ -103,13 +100,25 @@ struct FontMetadataReaderTests {
         }
     }
 
-    @Test func nonVariableFontHasNoAxes() throws {
-        let url = URL(fileURLWithPath: "/System/Library/Fonts/Supplemental/Arial.ttf")
+    // MARK: - Font Collection (TTC) — System Font
+
+    @Test func readTTCFontCollection() throws {
+        let url = URL(fileURLWithPath: "/System/Library/Fonts/Helvetica.ttc")
         let metadata = try FontMetadataReader.readMetadata(from: url)
 
-        let face = try #require(metadata.faces.first)
-        #expect(!face.isVariable)
-        #expect(face.variationAxes.isEmpty)
+        #expect(metadata.faces.count > 1)
+        #expect(metadata.isCollection)
+        #expect(metadata.fileSize > 0)
+
+        let psNames = Set(metadata.faces.map(\.postScriptName))
+        #expect(psNames.count == metadata.faces.count, "Each face should have a unique PostScript name")
+
+        for face in metadata.faces {
+            #expect(!face.postScriptName.isEmpty)
+            #expect(!face.familyName.isEmpty)
+            #expect(!face.displayName.isEmpty)
+            #expect(face.glyphCount > 0)
+        }
     }
 
     // MARK: - Error Handling
@@ -122,7 +131,6 @@ struct FontMetadataReaderTests {
     }
 
     @Test func nonFontFileThrowsUnreadable() throws {
-        // Use a known non-font file
         let url = URL(fileURLWithPath: "/etc/hosts")
         #expect {
             try FontMetadataReader.readMetadata(from: url)
@@ -132,36 +140,12 @@ struct FontMetadataReaderTests {
         }
     }
 
-    // MARK: - Multiple Font Formats
-
-    @Test func readCourierTTC() throws {
-        let url = URL(fileURLWithPath: "/System/Library/Fonts/Courier.ttc")
-        let metadata = try FontMetadataReader.readMetadata(from: url)
-
-        #expect(metadata.isCollection)
-        #expect(metadata.faces.count > 1)
-
-        let familyNames = Set(metadata.faces.map(\.familyName))
-        #expect(familyNames.contains("Courier"))
-    }
-
-    @Test func readMenloTTC() throws {
-        let url = URL(fileURLWithPath: "/System/Library/Fonts/Menlo.ttc")
-        let metadata = try FontMetadataReader.readMetadata(from: url)
-
-        #expect(metadata.isCollection)
-
-        let hasRegular = metadata.faces.contains { $0.styleName == "Regular" }
-        #expect(hasRegular, "Menlo should have a Regular style")
-    }
-
     // MARK: - Metadata Completeness
 
     @Test func allFacesHaveRequiredFields() throws {
         let urls = [
-            URL(fileURLWithPath: "/System/Library/Fonts/Supplemental/Arial.ttf"),
-            URL(fileURLWithPath: "/System/Library/Fonts/Helvetica.ttc"),
-            URL(fileURLWithPath: "/System/Library/Fonts/SFNS.ttf"),
+            try Self.bundledFontURL("Cousine-Regular.ttf"),
+            try Self.bundledFontURL("Inter-Variable.ttf"),
         ]
 
         for url in urls {
@@ -176,13 +160,13 @@ struct FontMetadataReaderTests {
     }
 
     @Test func fileSizeIsPositive() throws {
-        let url = URL(fileURLWithPath: "/System/Library/Fonts/Supplemental/Arial.ttf")
+        let url = try Self.bundledFontURL("Cousine-Regular.ttf")
         let metadata = try FontMetadataReader.readMetadata(from: url)
         #expect(metadata.fileSize > 0)
     }
 
     @Test func fileURLIsPreserved() throws {
-        let url = URL(fileURLWithPath: "/System/Library/Fonts/Supplemental/Arial.ttf")
+        let url = try Self.bundledFontURL("Cousine-Regular.ttf")
         let metadata = try FontMetadataReader.readMetadata(from: url)
         #expect(metadata.fileURL == url)
     }
