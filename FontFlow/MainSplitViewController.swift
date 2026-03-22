@@ -71,7 +71,8 @@ class MainSplitViewController: NSSplitViewController {
         sidebarSplitViewItem = sidebarItem
 
         let listItem = NSSplitViewItem(contentListWithViewController: fontListViewController)
-        listItem.minimumThickness = 250
+        // Keep enough width for the list toolbar controls to stay inside the pane.
+        listItem.minimumThickness = 290
         listSplitViewItem = listItem
 
         let detailItem = NSSplitViewItem(viewController: fontDetailViewController)
@@ -226,7 +227,7 @@ extension MainSplitViewController: NSToolbarDelegate {
         case .fontSearch:
             let item = NSSearchToolbarItem(itemIdentifier: .fontSearch)
             item.label = "Search"
-            item.preferredWidthForSearchField = 220
+            item.preferredWidthForSearchField = 180
             item.searchField.target = self
             item.searchField.action = #selector(searchFieldChanged(_:))
             item.searchField.placeholderString = "Search Fonts"
