@@ -130,7 +130,7 @@ class SidebarViewController: NSViewController {
     }
 
     private func buildLibrarySection() -> SidebarNode {
-        SidebarNode(.header("Library"), children: [
+        SidebarNode(.header("Fonts"), children: [
             SidebarNode(.libraryItem(.allFonts)),
             SidebarNode(.libraryItem(.favorites)),
             SidebarNode(.libraryItem(.recentlyAdded)),
@@ -244,7 +244,7 @@ extension SidebarViewController: NSOutlineViewDelegate {
 
     private func makeHeaderCell(title: String) -> NSTableCellView {
         let cell = NSTableCellView()
-        let textField = NSTextField(labelWithString: title.uppercased())
+        let textField = NSTextField(labelWithString: title.capitalized)
         textField.font = .systemFont(ofSize: 11, weight: .semibold)
         textField.textColor = .secondaryLabelColor
         textField.translatesAutoresizingMaskIntoConstraints = false
