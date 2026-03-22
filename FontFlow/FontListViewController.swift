@@ -30,8 +30,8 @@ class FontFamilyNode {
 // MARK: - View Mode
 
 enum FontViewMode: Int {
-    case list = 0
-    case grid = 1
+    case grid = 0
+    case list = 1
 }
 
 // MARK: - Diffable Data Source Identifiers
@@ -55,7 +55,7 @@ class FontListViewController: NSViewController {
     private var dataSource: NSCollectionViewDiffableDataSource<FontSectionIdentifier, FontItemIdentifier>!
     private var familyNodes: [FontFamilyNode] = []
     private var fontsByObjectID: [NSManagedObjectID: FontRecord] = [:]
-    private var currentViewMode: FontViewMode = .list
+    private var currentViewMode: FontViewMode = .grid
     private var collapsedSections: Set<String> = []
 
     // MARK: - Lifecycle
@@ -66,7 +66,7 @@ class FontListViewController: NSViewController {
         scrollView.autohidesScrollers = true
 
         collectionView = NSCollectionView()
-        collectionView.collectionViewLayout = makeListLayout()
+        collectionView.collectionViewLayout = makeGridLayout()
         collectionView.isSelectable = true
         collectionView.allowsMultipleSelection = true
         collectionView.backgroundColors = [.clear]
