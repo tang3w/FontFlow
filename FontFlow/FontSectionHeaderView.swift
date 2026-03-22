@@ -11,6 +11,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
     static let elementKind = "SectionHeader"
     static let identifier = NSUserInterfaceItemIdentifier("FontSectionHeader")
+    static let estimatedHeight: CGFloat = 40
 
     var onToggle: (() -> Void)?
 
@@ -20,7 +21,6 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
             .withSymbolConfiguration(config)!
         let imageView = NSImageView(image: image)
         imageView.contentTintColor = .secondaryLabelColor
-
         imageView.translatesAutoresizingMaskIntoConstraints = false
         imageView.setContentHuggingPriority(.required, for: .horizontal)
         imageView.setContentCompressionResistancePriority(.required, for: .horizontal)
@@ -30,7 +30,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     private let nameLabel: NSTextField = {
         let label = NSTextField(labelWithString: "")
         label.font = .systemFont(ofSize: 13, weight: .semibold)
-        label.textColor = .secondaryLabelColor
+        label.textColor = .labelColor
         label.lineBreakMode = .byTruncatingTail
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
@@ -40,7 +40,6 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         let label = NSTextField(labelWithString: "")
         label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         label.textColor = .tertiaryLabelColor
-        label.alignment = .right
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
@@ -48,24 +47,31 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.85).cgColor
 
-        addSubview(chevronImageView)
         addSubview(nameLabel)
         addSubview(countLabel)
+        addSubview(chevronImageView)
 
         NSLayoutConstraint.activate([
-            chevronImageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            nameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            nameLabel.topAnchor.constraint(equalTo: topAnchor, constant: 6),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: chevronImageView.leadingAnchor, constant: -8),
+
+            countLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
+            countLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 1),
+            countLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
+            countLabel.trailingAnchor.constraint(lessThanOrEqualTo: chevronImageView.leadingAnchor, constant: -8),
+
+            chevronImageView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
             chevronImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
             chevronImageView.widthAnchor.constraint(equalToConstant: 12),
-
-            nameLabel.leadingAnchor.constraint(equalTo: chevronImageView.trailingAnchor, constant: 4),
-            nameLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: countLabel.leadingAnchor, constant: -8),
-
-            countLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            countLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
+    }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
     }
 
     @available(*, unavailable)
@@ -75,7 +81,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
     func configure(familyName: String, count: Int, isCollapsed: Bool, onToggle: @escaping () -> Void) {
         nameLabel.stringValue = familyName
-        countLabel.stringValue = "\(count)"
+        countLabel.stringValue = "\(count) styles"
         self.onToggle = onToggle
         updateChevron(collapsed: isCollapsed)
     }

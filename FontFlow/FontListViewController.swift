@@ -151,7 +151,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
 
             let headerSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0),
-                heightDimension: .absolute(32)
+                heightDimension: .estimated(FontSectionHeaderView.estimatedHeight)
             )
             let header = NSCollectionLayoutBoundarySupplementaryItem(
                 layoutSize: headerSize,
