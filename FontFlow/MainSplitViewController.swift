@@ -15,6 +15,8 @@ extension NSToolbarItem.Identifier {
     static let importFonts = NSToolbarItem.Identifier("importFonts")
     static let viewMode = NSToolbarItem.Identifier("viewMode")
     static let fontSearch = NSToolbarItem.Identifier("fontSearch")
+    static let sidebarTrackingSeparator = NSToolbarItem.Identifier("sidebarTrackingSeparator")
+    static let detailTrackingSeparator = NSToolbarItem.Identifier("detailTrackingSeparator")
 }
 
 // MARK: - MainSplitViewController
@@ -26,6 +28,10 @@ class MainSplitViewController: NSSplitViewController {
     private let sidebarViewController: SidebarViewController
     private let fontListViewController: FontListViewController
     private let fontDetailViewController: FontDetailViewController
+
+    private var sidebarSplitViewItem: NSSplitViewItem?
+    private var listSplitViewItem: NSSplitViewItem?
+    private var detailSplitViewItem: NSSplitViewItem?
 
     private var currentSidebarPredicate: NSPredicate?
     private var currentSearchPredicate: NSPredicate?
@@ -62,12 +68,15 @@ class MainSplitViewController: NSSplitViewController {
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebarViewController)
         sidebarItem.minimumThickness = 200
         sidebarItem.canCollapse = true
+        sidebarSplitViewItem = sidebarItem
 
         let listItem = NSSplitViewItem(contentListWithViewController: fontListViewController)
         listItem.minimumThickness = 250
+        listSplitViewItem = listItem
 
         let detailItem = NSSplitViewItem(viewController: fontDetailViewController)
         detailItem.minimumThickness = 250
+        detailSplitViewItem = detailItem
 
         addSplitViewItem(sidebarItem)
         addSplitViewItem(listItem)
@@ -122,6 +131,7 @@ class MainSplitViewController: NSSplitViewController {
         let toolbar = NSToolbar(identifier: "MainToolbar")
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
+        toolbar.allowsUserCustomization = false
         window.toolbar = toolbar
     }
 
@@ -197,6 +207,13 @@ extension MainSplitViewController: NSToolbarDelegate {
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         switch itemIdentifier {
+        case .sidebarTrackingSeparator:
+            return NSTrackingSeparatorToolbarItem(
+                identifier: .sidebarTrackingSeparator,
+                splitView: splitView,
+                dividerIndex: 0
+            )
+
         case .importFonts:
             let item = NSToolbarItem(itemIdentifier: .importFonts)
             item.label = "Import"
@@ -208,8 +225,13 @@ extension MainSplitViewController: NSToolbarDelegate {
 
         case .fontSearch:
             let item = NSSearchToolbarItem(itemIdentifier: .fontSearch)
+            item.label = "Search"
+            item.preferredWidthForSearchField = 220
             item.searchField.target = self
             item.searchField.action = #selector(searchFieldChanged(_:))
+            item.searchField.placeholderString = "Search Fonts"
+            item.searchField.setAccessibilityIdentifier("font-search-field")
+            item.searchField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
             return item
 
         case .viewMode:
@@ -218,7 +240,17 @@ extension MainSplitViewController: NSToolbarDelegate {
                 NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "Grid")!,
             ], selectionMode: .selectOne, labels: ["List", "Grid"], target: self, action: #selector(viewModeChanged(_:)))
             item.selectedIndex = 0
+            item.label = "View Mode"
+            item.view?.setAccessibilityIdentifier("font-view-mode-control")
+            item.view?.setContentCompressionResistancePriority(.required, for: .horizontal)
             return item
+
+        case .detailTrackingSeparator:
+            return NSTrackingSeparatorToolbarItem(
+                identifier: .detailTrackingSeparator,
+                splitView: splitView,
+                dividerIndex: 1
+            )
 
         default:
             return nil
@@ -226,10 +258,26 @@ extension MainSplitViewController: NSToolbarDelegate {
     }
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.importFonts, .flexibleSpace, .viewMode, .fontSearch]
+        [
+            .sidebarTrackingSeparator,
+            .fontSearch,
+            .flexibleSpace,
+            .viewMode,
+            .detailTrackingSeparator,
+            .flexibleSpace,
+            .importFonts,
+        ]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.importFonts, .viewMode, .fontSearch, .flexibleSpace, .space]
+        [
+            .sidebarTrackingSeparator,
+            .importFonts,
+            .viewMode,
+            .fontSearch,
+            .detailTrackingSeparator,
+            .flexibleSpace,
+            .space,
+        ]
     }
 }
