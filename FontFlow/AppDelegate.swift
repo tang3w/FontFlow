@@ -17,6 +17,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard let window = NSApplication.shared.windows.first else { return }
         let context = persistentContainer.viewContext
         let splitVC = MainSplitViewController(managedObjectContext: context)
+
+        window.styleMask.insert(.fullSizeContentView)
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
         window.contentViewController = splitVC
         window.title = "FontFlow"
         window.setContentSize(NSSize(width: 1100, height: 700))
@@ -130,4 +134,3 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
 }
-

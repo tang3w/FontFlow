@@ -50,6 +50,7 @@ class SidebarViewController: NSViewController {
     weak var delegate: SidebarSelectionDelegate?
     var managedObjectContext: NSManagedObjectContext!
 
+    private var scrollView: NSScrollView!
     private var outlineView: NSOutlineView!
     private var rootNodes: [SidebarNode] = []
     private var hasSelectedInitialItem = false
@@ -57,9 +58,15 @@ class SidebarViewController: NSViewController {
     // MARK: - Lifecycle
 
     override func loadView() {
+        let containerView = NSView()
+        containerView.translatesAutoresizingMaskIntoConstraints = false
+
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
+        scrollView.drawsBackground = false
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
+        self.scrollView = scrollView
 
         outlineView = NSOutlineView()
         outlineView.headerView = nil
@@ -74,7 +81,17 @@ class SidebarViewController: NSViewController {
         outlineView.outlineTableColumn = column
 
         scrollView.documentView = outlineView
-        view = scrollView
+
+        containerView.addSubview(scrollView)
+
+        NSLayoutConstraint.activate([
+            scrollView.topAnchor.constraint(equalTo: containerView.safeAreaLayoutGuide.topAnchor),
+            scrollView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            scrollView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            scrollView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor),
+        ])
+
+        view = containerView
     }
 
     override func viewDidLoad() {

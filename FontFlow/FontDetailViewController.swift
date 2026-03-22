@@ -140,7 +140,7 @@ class FontDetailViewController: NSViewController {
         controlsBar.addArrangedSubview(lineSpacingLabel)
 
         NSLayoutConstraint.activate([
-            controlsBar.topAnchor.constraint(equalTo: contentContainer.topAnchor, constant: regionSpacing),
+            controlsBar.topAnchor.constraint(equalTo: contentContainer.safeAreaLayoutGuide.topAnchor, constant: regionSpacing),
             controlsBar.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor, constant: 12),
             controlsBar.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor, constant: -12),
         ])
