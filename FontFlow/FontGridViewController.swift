@@ -1,16 +1,16 @@
 //
-//  FontListViewController.swift
+//  FontGridViewController.swift
 //  FontFlow
 //
-//  Created on 2026/3/21.
+//  Created on 2026/3/22.
 //
 
 import Cocoa
 import CoreData
 
-// MARK: - FontListViewController
+// MARK: - FontGridViewController
 
-class FontListViewController: NSViewController, FontBrowserChildViewControlling {
+class FontGridViewController: NSViewController, FontBrowserChildViewControlling {
 
     var onSelectionChanged: (([FontRecord]) -> Void)?
     var onSectionToggled: ((String) -> Void)?
@@ -36,8 +36,8 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         collectionView.delegate = self
 
         collectionView.register(
-            FontListItem.self,
-            forItemWithIdentifier: FontListItem.identifier
+            FontGridItem.self,
+            forItemWithIdentifier: FontGridItem.identifier
         )
         collectionView.register(
             FontSectionHeaderView.self,
@@ -92,15 +92,15 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
             guard let self = self,
                   let record = self.fontsByObjectID[itemIdentifier.objectID] else {
                 return collectionView.makeItem(
-                    withIdentifier: FontListItem.identifier,
+                    withIdentifier: FontGridItem.identifier,
                     for: indexPath
                 )
             }
 
             let item = collectionView.makeItem(
-                withIdentifier: FontListItem.identifier,
+                withIdentifier: FontGridItem.identifier,
                 for: indexPath
-            ) as! FontListItem
+            ) as! FontGridItem
             item.configure(with: record)
             return item
         }
@@ -135,19 +135,21 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     private func makeLayout() -> NSCollectionViewCompositionalLayout {
         NSCollectionViewCompositionalLayout { _, environment in
             let itemSize = NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1.0),
-                heightDimension: .absolute(44)
+                widthDimension: .absolute(180),
+                heightDimension: .absolute(200)
             )
             let item = NSCollectionLayoutItem(layoutSize: itemSize)
 
             let groupSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0),
-                heightDimension: .absolute(44)
+                heightDimension: .absolute(200)
             )
             let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
+            group.interItemSpacing = .fixed(8)
 
             let section = NSCollectionLayoutSection(group: group)
-            section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0)
+            section.interGroupSpacing = 8
+            section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 12, trailing: 12)
 
             let headerSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0),
@@ -168,7 +170,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
 
 // MARK: - NSCollectionViewDelegate
 
-extension FontListViewController: NSCollectionViewDelegate {
+extension FontGridViewController: NSCollectionViewDelegate {
 
     func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
         notifySelectionChanged()

@@ -26,7 +26,7 @@ class MainSplitViewController: NSSplitViewController {
     private let managedObjectContext: NSManagedObjectContext
 
     private let sidebarViewController: SidebarViewController
-    private let fontListViewController: FontListViewController
+    private let fontBrowserViewController: FontBrowserViewController
     private let fontDetailViewController: FontDetailViewController
 
     private var sidebarSplitViewItem: NSSplitViewItem?
@@ -44,8 +44,8 @@ class MainSplitViewController: NSSplitViewController {
         sidebarViewController = SidebarViewController()
         sidebarViewController.managedObjectContext = managedObjectContext
 
-        fontListViewController = FontListViewController()
-        fontListViewController.managedObjectContext = managedObjectContext
+        fontBrowserViewController = FontBrowserViewController()
+        fontBrowserViewController.managedObjectContext = managedObjectContext
 
         fontDetailViewController = FontDetailViewController()
 
@@ -63,14 +63,14 @@ class MainSplitViewController: NSSplitViewController {
         super.viewDidLoad()
 
         sidebarViewController.delegate = self
-        fontListViewController.delegate = self
+        fontBrowserViewController.delegate = self
 
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebarViewController)
         sidebarItem.minimumThickness = 200
         sidebarItem.canCollapse = false
         sidebarSplitViewItem = sidebarItem
 
-        let listItem = NSSplitViewItem(contentListWithViewController: fontListViewController)
+        let listItem = NSSplitViewItem(contentListWithViewController: fontBrowserViewController)
         // Keep enough width for the list toolbar controls to stay inside the pane.
         listItem.minimumThickness = 290
         listSplitViewItem = listItem
@@ -94,7 +94,7 @@ class MainSplitViewController: NSSplitViewController {
     private func updateFontList() {
         let predicates = [currentSidebarPredicate, currentSearchPredicate].compactMap { $0 }
         let combined: NSPredicate? = predicates.isEmpty ? nil : NSCompoundPredicate(andPredicateWithSubpredicates: predicates)
-        fontListViewController.updatePredicate(combined)
+        fontBrowserViewController.updatePredicate(combined)
     }
 
     /// Maps a sidebar item to an `NSPredicate` for the font list fetch.
@@ -179,7 +179,7 @@ class MainSplitViewController: NSSplitViewController {
 
     @objc private func viewModeChanged(_ sender: NSToolbarItemGroup) {
         let mode = FontViewMode(rawValue: sender.selectedIndex) ?? .grid
-        fontListViewController.setViewMode(mode)
+        fontBrowserViewController.setViewMode(mode)
     }
 }
 
@@ -193,11 +193,11 @@ extension MainSplitViewController: SidebarSelectionDelegate {
     }
 }
 
-// MARK: - FontListSelectionDelegate
+// MARK: - FontBrowserSelectionDelegate
 
-extension MainSplitViewController: FontListSelectionDelegate {
+extension MainSplitViewController: FontBrowserSelectionDelegate {
 
-    func fontListDidSelectFonts(_ fontList: FontListViewController, fonts: [FontRecord]) {
+    func fontBrowserDidSelectFonts(_ browser: FontBrowserViewController, fonts: [FontRecord]) {
         fontDetailViewController.updateFonts(fonts)
     }
 }
