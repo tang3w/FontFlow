@@ -136,10 +136,18 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         NSCollectionViewCompositionalLayout { _, environment in
             let itemWidth: CGFloat = 124
             let itemHeight: CGFloat = 148
-            let horizontalInsets: CGFloat = 24
-            let interItemSpacing: CGFloat = 8
-            let availableWidth = max(environment.container.effectiveContentSize.width - horizontalInsets, itemWidth)
-            let columnCount = max(1, Int((availableWidth + interItemSpacing) / (itemWidth + interItemSpacing)))
+            let horizontalContentInset: CGFloat = 12
+            let minimumInterItemSpacing: CGFloat = 8
+            let verticalGroupSpacing: CGFloat = 8
+            let availableWidth = max(
+                environment.container.effectiveContentSize.width - (horizontalContentInset * 2),
+                itemWidth
+            )
+            let columnCount = max(1, Int((availableWidth + minimumInterItemSpacing) / (itemWidth + minimumInterItemSpacing)))
+            let totalItemWidth = CGFloat(columnCount) * itemWidth
+            let interItemSpacing = columnCount > 1
+                ? (availableWidth - totalItemWidth) / CGFloat(columnCount - 1)
+                : 0
 
             let itemSize = NSCollectionLayoutSize(
                 widthDimension: .absolute(itemWidth),
@@ -156,10 +164,15 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
                 subitems: Array(repeating: item, count: columnCount)
             )
             group.interItemSpacing = .fixed(interItemSpacing)
-            group.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12)
+            group.contentInsets = NSDirectionalEdgeInsets(
+                top: 0,
+                leading: horizontalContentInset,
+                bottom: 0,
+                trailing: horizontalContentInset
+            )
 
             let section = NSCollectionLayoutSection(group: group)
-            section.interGroupSpacing = interItemSpacing
+            section.interGroupSpacing = verticalGroupSpacing
             section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0)
 
             let headerSize = NSCollectionLayoutSize(
