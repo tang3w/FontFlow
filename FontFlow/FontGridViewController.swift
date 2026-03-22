@@ -134,22 +134,32 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
 
     private func makeLayout() -> NSCollectionViewCompositionalLayout {
         NSCollectionViewCompositionalLayout { _, environment in
+            let itemWidth: CGFloat = 124
+            let itemHeight: CGFloat = 148
+            let horizontalInsets: CGFloat = 24
+            let interItemSpacing: CGFloat = 8
+            let availableWidth = max(environment.container.effectiveContentSize.width - horizontalInsets, itemWidth)
+            let columnCount = max(1, Int((availableWidth + interItemSpacing) / (itemWidth + interItemSpacing)))
+
             let itemSize = NSCollectionLayoutSize(
-                widthDimension: .absolute(180),
-                heightDimension: .absolute(200)
+                widthDimension: .absolute(itemWidth),
+                heightDimension: .absolute(itemHeight)
             )
             let item = NSCollectionLayoutItem(layoutSize: itemSize)
 
             let groupSize = NSCollectionLayoutSize(
                 widthDimension: .fractionalWidth(1.0),
-                heightDimension: .absolute(200)
+                heightDimension: .absolute(itemHeight)
             )
-            let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
-            group.interItemSpacing = .fixed(8)
+            let group = NSCollectionLayoutGroup.horizontal(
+                layoutSize: groupSize,
+                subitems: Array(repeating: item, count: columnCount)
+            )
+            group.interItemSpacing = .fixed(interItemSpacing)
             group.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 12)
 
             let section = NSCollectionLayoutSection(group: group)
-            section.interGroupSpacing = 8
+            section.interGroupSpacing = interItemSpacing
             section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0)
 
             let headerSize = NSCollectionLayoutSize(

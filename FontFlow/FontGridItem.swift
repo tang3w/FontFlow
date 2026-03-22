@@ -11,12 +11,19 @@ class FontGridItem: NSCollectionViewItem {
 
     static let identifier = NSUserInterfaceItemIdentifier("FontGridItem")
 
+    private let previewCardView: NSView = {
+        let view = NSView()
+        view.wantsLayer = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
+
     private let previewLabel: NSTextField = {
         let label = NSTextField(labelWithString: "")
-        label.font = .systemFont(ofSize: 24)
+        label.font = .systemFont(ofSize: 36)
         label.alignment = .center
         label.lineBreakMode = .byTruncatingTail
-        label.maximumNumberOfLines = 3
+        label.maximumNumberOfLines = 1
         label.isEditable = false
         label.isBordered = false
         label.drawsBackground = false
@@ -30,6 +37,7 @@ class FontGridItem: NSCollectionViewItem {
         label.textColor = .secondaryLabelColor
         label.alignment = .center
         label.lineBreakMode = .byTruncatingTail
+        label.maximumNumberOfLines = 1
         label.isEditable = false
         label.isBordered = false
         label.drawsBackground = false
@@ -39,25 +47,30 @@ class FontGridItem: NSCollectionViewItem {
 
     override func loadView() {
         let root = NSView()
-        root.wantsLayer = true
-        root.layer?.cornerRadius = 8
-        root.layer?.borderWidth = 1
-        root.layer?.borderColor = NSColor.separatorColor.cgColor
         view = root
 
-        view.addSubview(previewLabel)
+        view.addSubview(previewCardView)
+        previewCardView.addSubview(previewLabel)
         view.addSubview(nameLabel)
 
         NSLayoutConstraint.activate([
-            previewLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
-            previewLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
-            previewLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 16),
-            previewLabel.bottomAnchor.constraint(lessThanOrEqualTo: nameLabel.topAnchor, constant: -8),
+            previewCardView.topAnchor.constraint(equalTo: view.topAnchor, constant: 4),
+            previewCardView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 6),
+            previewCardView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -6),
+            previewCardView.heightAnchor.constraint(equalTo: previewCardView.widthAnchor),
 
-            nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 8),
-            nameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -8),
-            nameLabel.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -10),
+            previewLabel.centerXAnchor.constraint(equalTo: previewCardView.centerXAnchor),
+            previewLabel.centerYAnchor.constraint(equalTo: previewCardView.centerYAnchor),
+            previewLabel.leadingAnchor.constraint(greaterThanOrEqualTo: previewCardView.leadingAnchor, constant: 8),
+            previewLabel.trailingAnchor.constraint(lessThanOrEqualTo: previewCardView.trailingAnchor, constant: -8),
+
+            nameLabel.topAnchor.constraint(equalTo: previewCardView.bottomAnchor, constant: 8),
+            nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 6),
+            nameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -6),
+            nameLabel.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -4),
         ])
+
+        updateSelectionHighlight()
     }
 
     override var isSelected: Bool {
@@ -67,34 +80,36 @@ class FontGridItem: NSCollectionViewItem {
     }
 
     func configure(with record: FontRecord) {
-        let displayName = record.displayName ?? record.postScriptName ?? "Unknown"
+        let displayName = record.displayName ?? record.styleName ?? record.postScriptName ?? "Unknown"
         nameLabel.stringValue = displayName
-        previewLabel.stringValue = displayName
+        previewLabel.stringValue = "Aa"
 
         if let psName = record.postScriptName,
-           let font = NSFont(name: psName, size: 24) {
+           let font = NSFont(name: psName, size: 36) {
             previewLabel.font = font
         } else {
-            previewLabel.font = .systemFont(ofSize: 24)
+            previewLabel.font = .systemFont(ofSize: 36)
         }
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
         previewLabel.stringValue = ""
-        previewLabel.font = .systemFont(ofSize: 24)
+        previewLabel.font = .systemFont(ofSize: 36)
         nameLabel.stringValue = ""
-        view.layer?.borderColor = NSColor.separatorColor.cgColor
-        view.layer?.borderWidth = 1
+        updateSelectionHighlight()
     }
 
     private func updateSelectionHighlight() {
+        previewCardView.layer?.cornerRadius = 10
         if isSelected {
-            view.layer?.borderColor = NSColor.controlAccentColor.cgColor
-            view.layer?.borderWidth = 2
+            previewCardView.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.10).cgColor
+            previewCardView.layer?.borderColor = NSColor.controlAccentColor.cgColor
+            previewCardView.layer?.borderWidth = 2
         } else {
-            view.layer?.borderColor = NSColor.separatorColor.cgColor
-            view.layer?.borderWidth = 1
+            previewCardView.layer?.backgroundColor = NSColor.quaternaryLabelColor.withAlphaComponent(0.06).cgColor
+            previewCardView.layer?.borderColor = NSColor.separatorColor.cgColor
+            previewCardView.layer?.borderWidth = 1
         }
     }
 }
