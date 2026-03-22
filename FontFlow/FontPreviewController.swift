@@ -10,7 +10,7 @@ import CoreData
 
 /// Pure preview controller: renders font previews in an NSCollectionView.
 /// Receives fonts and display parameters externally, renders them.
-class FontPreviewController: NSViewController {
+class FontPreviewController: NSViewController, FontPreviewCellDelegate {
 
     // MARK: - State
 
@@ -19,6 +19,7 @@ class FontPreviewController: NSViewController {
     private var currentFontSize: CGFloat = 48
     private var currentLineSpacing: CGFloat = 1.2
     private var currentVariationValues: [UInt32: Double] = [:]
+    private var isSampleEditable = false
 
     // MARK: - Views
 
@@ -57,22 +58,22 @@ class FontPreviewController: NSViewController {
 
     func setSampleText(_ text: String) {
         currentSampleText = text
-        reloadVisibleCells()
+        refreshVisibleCellsAndLayout()
     }
 
     func setFontSize(_ size: CGFloat) {
         currentFontSize = size
-        reloadVisibleCells()
+        refreshVisibleCellsAndLayout()
     }
 
     func setLineSpacing(_ spacing: CGFloat) {
         currentLineSpacing = spacing
-        reloadVisibleCells()
+        refreshVisibleCellsAndLayout()
     }
 
     func setVariationValues(_ values: [UInt32: Double]) {
         currentVariationValues = values
-        reloadVisibleCells()
+        refreshVisibleCellsAndLayout()
     }
 
     // MARK: - Data Source
@@ -89,6 +90,7 @@ class FontPreviewController: NSViewController {
                 withIdentifier: FontPreviewCell.identifier,
                 for: indexPath
             ) as! FontPreviewCell
+            item.delegate = self
 
             if indexPath.item < self.currentFonts.count {
                 let record = self.currentFonts[indexPath.item]
@@ -98,7 +100,8 @@ class FontPreviewController: NSViewController {
                     sampleText: self.currentSampleText,
                     fontSize: self.currentFontSize,
                     lineSpacing: self.currentLineSpacing,
-                    variationValues: variations
+                    variationValues: variations,
+                    isEditable: self.isSampleEditable
                 )
             }
             return item
@@ -114,20 +117,34 @@ class FontPreviewController: NSViewController {
         dataSource.apply(snapshot, animatingDifferences: false)
     }
 
-    private func reloadVisibleCells() {
-        for indexPath in collectionView.indexPathsForVisibleItems() {
+    private func refreshVisibleCellsAndLayout() {
+        let visibleIndexPaths = collectionView.indexPathsForVisibleItems()
+
+        for indexPath in visibleIndexPaths {
             guard let item = collectionView.item(at: indexPath) as? FontPreviewCell,
                   indexPath.item < currentFonts.count else { continue }
             let record = currentFonts[indexPath.item]
             let variations = currentFonts.count == 1 ? currentVariationValues : nil
+            item.delegate = self
             item.configure(
                 record: record,
                 sampleText: currentSampleText,
                 fontSize: currentFontSize,
                 lineSpacing: currentLineSpacing,
-                variationValues: variations
+                variationValues: variations,
+                isEditable: isSampleEditable
             )
         }
+
+        collectionView.collectionViewLayout?.invalidateLayout()
+
+        guard !visibleIndexPaths.isEmpty else { return }
+        collectionView.reloadItems(at: Set(visibleIndexPaths))
+    }
+
+    func fontPreviewCell(_ cell: FontPreviewCell, didChangeSampleText text: String) {
+        guard text != currentSampleText else { return }
+        setSampleText(text)
     }
 
     // MARK: - Layout
