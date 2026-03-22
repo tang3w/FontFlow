@@ -11,7 +11,7 @@ import CoreData
 // MARK: - Delegate
 
 protocol FontListSelectionDelegate: AnyObject {
-    func fontListDidSelectFont(_ fontList: FontListViewController, font: FontRecord?)
+    func fontListDidSelectFonts(_ fontList: FontListViewController, fonts: [FontRecord])
 }
 
 // MARK: - Data Model
@@ -68,7 +68,7 @@ class FontListViewController: NSViewController {
         collectionView = NSCollectionView()
         collectionView.collectionViewLayout = makeListLayout()
         collectionView.isSelectable = true
-        collectionView.allowsMultipleSelection = false
+        collectionView.allowsMultipleSelection = true
         collectionView.backgroundColors = [.clear]
         collectionView.delegate = self
 
@@ -111,7 +111,7 @@ class FontListViewController: NSViewController {
         }
 
         applySnapshot(animatingDifferences: false)
-        delegate?.fontListDidSelectFont(self, font: nil)
+        delegate?.fontListDidSelectFonts(self, fonts: [])
     }
 
     /// Switches between list and grid view modes.
@@ -325,17 +325,18 @@ class FontListViewController: NSViewController {
 extension FontListViewController: NSCollectionViewDelegate {
 
     func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
-        guard let indexPath = indexPaths.first,
-              let itemIdentifier = dataSource.itemIdentifier(for: indexPath),
-              let record = fontsByObjectID[itemIdentifier.objectID] else {
-            return
-        }
-        delegate?.fontListDidSelectFont(self, font: record)
+        notifySelectionChanged()
     }
 
     func collectionView(_ collectionView: NSCollectionView, didDeselectItemsAt indexPaths: Set<IndexPath>) {
-        if collectionView.selectionIndexPaths.isEmpty {
-            delegate?.fontListDidSelectFont(self, font: nil)
+        notifySelectionChanged()
+    }
+
+    private func notifySelectionChanged() {
+        let selectedRecords = collectionView.selectionIndexPaths.compactMap { indexPath -> FontRecord? in
+            guard let itemIdentifier = dataSource.itemIdentifier(for: indexPath) else { return nil }
+            return fontsByObjectID[itemIdentifier.objectID]
         }
+        delegate?.fontListDidSelectFonts(self, fonts: selectedRecords)
     }
 }

@@ -186,8 +186,8 @@ extension MainSplitViewController: SidebarSelectionDelegate {
 
 extension MainSplitViewController: FontListSelectionDelegate {
 
-    func fontListDidSelectFont(_ fontList: FontListViewController, font: FontRecord?) {
-        fontDetailViewController.updateFont(font)
+    func fontListDidSelectFonts(_ fontList: FontListViewController, fonts: [FontRecord]) {
+        fontDetailViewController.updateFonts(fonts)
     }
 }
 
