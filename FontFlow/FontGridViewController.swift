@@ -134,8 +134,8 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
 
     private func makeLayout() -> NSCollectionViewCompositionalLayout {
         NSCollectionViewCompositionalLayout { _, environment in
-            let itemWidth: CGFloat = 124
-            let itemHeight: CGFloat = 148
+            let itemWidth: CGFloat = 132
+            let itemHeight: CGFloat = 164
             let horizontalContentInset: CGFloat = 12
             let minimumInterItemSpacing: CGFloat = 8
             let verticalGroupSpacing: CGFloat = 8

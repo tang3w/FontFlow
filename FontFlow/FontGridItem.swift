@@ -36,12 +36,14 @@ class FontGridItem: NSCollectionViewItem {
         label.font = .systemFont(ofSize: 11)
         label.textColor = .secondaryLabelColor
         label.alignment = .center
-        label.lineBreakMode = .byTruncatingTail
-        label.maximumNumberOfLines = 1
+        label.lineBreakMode = .byWordWrapping
+        label.maximumNumberOfLines = 2
         label.isEditable = false
         label.isBordered = false
         label.drawsBackground = false
         label.translatesAutoresizingMaskIntoConstraints = false
+        label.cell?.wraps = true
+        label.cell?.usesSingleLineMode = false
         return label
     }()
 
@@ -80,7 +82,7 @@ class FontGridItem: NSCollectionViewItem {
     }
 
     func configure(with record: FontRecord) {
-        let displayName = record.displayName ?? record.styleName ?? record.postScriptName ?? "Unknown"
+        let displayName = record.styleName ?? record.displayName ?? record.postScriptName ?? "Unknown"
         nameLabel.stringValue = displayName
         previewLabel.stringValue = "Aa"
 
