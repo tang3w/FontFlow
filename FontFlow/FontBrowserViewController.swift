@@ -171,7 +171,9 @@ class FontBrowserViewController: NSViewController {
             familyNodes: familyNodes,
             fontsByObjectID: fontsByObjectID,
             collapsedSections: collapsedSections,
-            animatingDifferences: true,
+            // Keep section toggles non-animated so pinned headers resize immediately
+            // when the scroll view autohides its vertical scroller.
+            animatingDifferences: false,
             reloadingSections: [familyName]
         )
     }
