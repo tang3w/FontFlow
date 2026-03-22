@@ -67,7 +67,7 @@ class MainSplitViewController: NSSplitViewController {
 
         let sidebarItem = NSSplitViewItem(sidebarWithViewController: sidebarViewController)
         sidebarItem.minimumThickness = 200
-        sidebarItem.canCollapse = true
+        sidebarItem.canCollapse = false
         sidebarSplitViewItem = sidebarItem
 
         let listItem = NSSplitViewItem(contentListWithViewController: fontListViewController)
