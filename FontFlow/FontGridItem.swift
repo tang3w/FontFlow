@@ -9,11 +9,59 @@ import Cocoa
 
 class FontGridItem: NSCollectionViewItem {
 
+    private final class PreviewCardView: NSView {
+        var isHighlighted = false {
+            didSet {
+                needsDisplay = true
+            }
+        }
+
+        override var isFlipped: Bool {
+            true
+        }
+
+        override init(frame frameRect: NSRect) {
+            super.init(frame: frameRect)
+            wantsLayer = true
+        }
+
+        required init?(coder: NSCoder) {
+            super.init(coder: coder)
+            wantsLayer = true
+        }
+
+        override func viewDidChangeEffectiveAppearance() {
+            super.viewDidChangeEffectiveAppearance()
+            needsDisplay = true
+        }
+
+        override func draw(_ dirtyRect: NSRect) {
+            super.draw(dirtyRect)
+
+            let path = NSBezierPath(roundedRect: bounds, xRadius: 10, yRadius: 10)
+
+            if isHighlighted {
+                NSColor.controlAccentColor.withAlphaComponent(0.10).setFill()
+                path.fill()
+
+                NSColor.controlAccentColor.setStroke()
+                path.lineWidth = 2
+                path.stroke()
+            } else {
+                NSColor.quaternaryLabelColor.withAlphaComponent(0.06).setFill()
+                path.fill()
+
+                NSColor.separatorColor.setStroke()
+                path.lineWidth = 1
+                path.stroke()
+            }
+        }
+    }
+
     static let identifier = NSUserInterfaceItemIdentifier("FontGridItem")
 
-    private let previewCardView: NSView = {
-        let view = NSView()
-        view.wantsLayer = true
+    private let previewCardView: PreviewCardView = {
+        let view = PreviewCardView()
         view.translatesAutoresizingMaskIntoConstraints = false
         return view
     }()
@@ -103,15 +151,6 @@ class FontGridItem: NSCollectionViewItem {
     }
 
     private func updateSelectionHighlight() {
-        previewCardView.layer?.cornerRadius = 10
-        if isSelected {
-            previewCardView.layer?.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.10).cgColor
-            previewCardView.layer?.borderColor = NSColor.controlAccentColor.cgColor
-            previewCardView.layer?.borderWidth = 2
-        } else {
-            previewCardView.layer?.backgroundColor = NSColor.quaternaryLabelColor.withAlphaComponent(0.06).cgColor
-            previewCardView.layer?.borderColor = NSColor.separatorColor.cgColor
-            previewCardView.layer?.borderWidth = 1
-        }
+        previewCardView.isHighlighted = isSelected
     }
 }
