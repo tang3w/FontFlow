@@ -12,6 +12,16 @@ import CoreData
 
 class FontGridViewController: NSViewController, FontBrowserChildViewControlling {
 
+    private enum LayoutMetrics {
+        static let horizontalEdgeInset: CGFloat = 8
+        static let minimumItemWidth: CGFloat = 110
+        static let preferredItemWidth: CGFloat = 125
+        static let maximumItemWidth: CGFloat = 160
+        static let itemHeightPadding: CGFloat = 32
+        static let verticalGroupSpacing: CGFloat = 8
+        static let sectionBottomInset: CGFloat = 12
+    }
+
     var onSelectionChanged: (([FontRecord]) -> Void)?
     var onSectionToggled: ((String) -> Void)?
 
@@ -20,6 +30,8 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     private var familyNodes: [FontFamilyNode] = []
     private var fontsByObjectID: [NSManagedObjectID: FontRecord] = [:]
     private var collapsedSections: Set<String> = []
+    private var currentColumnCount = 0
+    private var lastLayoutWidth: CGFloat = 0
 
     // MARK: - Lifecycle
 
@@ -49,6 +61,11 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         view = scrollView
 
         configureDataSource()
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        invalidateLayoutForWidthChangeIfNeeded()
     }
 
     // MARK: - FontBrowserChildViewControlling
@@ -133,62 +150,115 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     // MARK: - Layout
 
     private func makeLayout() -> NSCollectionViewCompositionalLayout {
-        NSCollectionViewCompositionalLayout { _, environment in
-            let itemWidth: CGFloat = 132
-            let itemHeight: CGFloat = 164
-            let horizontalContentInset: CGFloat = 12
-            let minimumInterItemSpacing: CGFloat = 8
-            let verticalGroupSpacing: CGFloat = 8
-            let availableWidth = max(
-                environment.container.effectiveContentSize.width - (horizontalContentInset * 2),
-                itemWidth
-            )
-            let columnCount = max(1, Int((availableWidth + minimumInterItemSpacing) / (itemWidth + minimumInterItemSpacing)))
-            let totalItemWidth = CGFloat(columnCount) * itemWidth
-            let interItemSpacing = columnCount > 1
-                ? (availableWidth - totalItemWidth) / CGFloat(columnCount - 1)
-                : 0
-
-            let itemSize = NSCollectionLayoutSize(
-                widthDimension: .absolute(itemWidth),
-                heightDimension: .absolute(itemHeight)
-            )
-            let item = NSCollectionLayoutItem(layoutSize: itemSize)
-
-            let groupSize = NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1.0),
-                heightDimension: .absolute(itemHeight)
-            )
-            let group = NSCollectionLayoutGroup.horizontal(
-                layoutSize: groupSize,
-                subitems: Array(repeating: item, count: columnCount)
-            )
-            group.interItemSpacing = .fixed(interItemSpacing)
-            group.contentInsets = NSDirectionalEdgeInsets(
-                top: 0,
-                leading: horizontalContentInset,
-                bottom: 0,
-                trailing: horizontalContentInset
-            )
-
-            let section = NSCollectionLayoutSection(group: group)
-            section.interGroupSpacing = verticalGroupSpacing
-            section.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 0, bottom: 12, trailing: 0)
-
-            let headerSize = NSCollectionLayoutSize(
-                widthDimension: .fractionalWidth(1.0),
-                heightDimension: .estimated(FontSectionHeaderView.estimatedHeight)
-            )
-            let header = NSCollectionLayoutBoundarySupplementaryItem(
-                layoutSize: headerSize,
-                elementKind: FontSectionHeaderView.elementKind,
-                alignment: .top
-            )
-            header.pinToVisibleBounds = true
-            section.boundarySupplementaryItems = [header]
-
-            return section
+        NSCollectionViewCompositionalLayout { [weak self] _, environment in
+            self?.makeGridSection(for: environment) ?? Self.makeFallbackSection(for: environment)
         }
+    }
+
+    private func makeGridSection(for environment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
+        let contentWidth = max(
+            environment.container.effectiveContentSize.width - (LayoutMetrics.horizontalEdgeInset * 2),
+            LayoutMetrics.minimumItemWidth
+        )
+        let columnCount = resolvedColumnCount(for: contentWidth)
+        return Self.makeSection(contentWidth: contentWidth, columnCount: columnCount)
+    }
+
+    private func resolvedColumnCount(for availableWidth: CGFloat) -> Int {
+        var columnCount = currentColumnCount > 0
+            ? currentColumnCount
+            : max(1, Int(availableWidth / LayoutMetrics.preferredItemWidth))
+        var itemWidth = availableWidth / CGFloat(columnCount)
+
+        while itemWidth < LayoutMetrics.minimumItemWidth, columnCount > 1 {
+            columnCount -= 1
+            itemWidth = availableWidth / CGFloat(columnCount)
+        }
+
+        while itemWidth > LayoutMetrics.maximumItemWidth {
+            let nextColumnCount = columnCount + 1
+            let nextItemWidth = availableWidth / CGFloat(nextColumnCount)
+
+            guard nextItemWidth >= LayoutMetrics.minimumItemWidth else {
+                break
+            }
+
+            columnCount = nextColumnCount
+            itemWidth = nextItemWidth
+        }
+
+        currentColumnCount = columnCount
+        return columnCount
+    }
+
+    private func invalidateLayoutForWidthChangeIfNeeded() {
+        let width = (view as? NSScrollView)?.contentView.bounds.width ?? view.bounds.width
+
+        guard abs(width - lastLayoutWidth) > 0.5 else {
+            return
+        }
+
+        lastLayoutWidth = width
+        collectionView.collectionViewLayout?.invalidateLayout()
+    }
+
+    private static func makeFallbackSection(for environment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
+        let contentWidth = max(
+            environment.container.effectiveContentSize.width - (LayoutMetrics.horizontalEdgeInset * 2),
+            LayoutMetrics.minimumItemWidth
+        )
+        let columnCount = max(1, Int(contentWidth / LayoutMetrics.preferredItemWidth))
+        return makeSection(contentWidth: contentWidth, columnCount: columnCount)
+    }
+
+    private static func makeSection(contentWidth: CGFloat, columnCount: Int) -> NSCollectionLayoutSection {
+        let itemWidth = contentWidth / CGFloat(columnCount)
+        let itemHeight = itemWidth + LayoutMetrics.itemHeightPadding
+
+        let itemSize = NSCollectionLayoutSize(
+            widthDimension: .absolute(itemWidth),
+            heightDimension: .absolute(itemHeight)
+        )
+        let item = NSCollectionLayoutItem(layoutSize: itemSize)
+
+        let groupSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .absolute(itemHeight)
+        )
+        let group = NSCollectionLayoutGroup.horizontal(
+            layoutSize: groupSize,
+            subitems: Array(repeating: item, count: columnCount)
+        )
+        group.interItemSpacing = .fixed(0)
+        group.contentInsets = NSDirectionalEdgeInsets(
+            top: 0,
+            leading: LayoutMetrics.horizontalEdgeInset,
+            bottom: 0,
+            trailing: LayoutMetrics.horizontalEdgeInset
+        )
+
+        let section = NSCollectionLayoutSection(group: group)
+        section.interGroupSpacing = LayoutMetrics.verticalGroupSpacing
+        section.contentInsets = NSDirectionalEdgeInsets(
+            top: 0,
+            leading: 0,
+            bottom: LayoutMetrics.sectionBottomInset,
+            trailing: 0
+        )
+
+        let headerSize = NSCollectionLayoutSize(
+            widthDimension: .fractionalWidth(1.0),
+            heightDimension: .estimated(FontSectionHeaderView.estimatedHeight)
+        )
+        let header = NSCollectionLayoutBoundarySupplementaryItem(
+            layoutSize: headerSize,
+            elementKind: FontSectionHeaderView.elementKind,
+            alignment: .top
+        )
+        header.pinToVisibleBounds = true
+        section.boundarySupplementaryItems = [header]
+
+        return section
     }
 }
 
