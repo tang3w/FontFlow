@@ -45,8 +45,7 @@ class FontListItem: NSCollectionViewItem {
         let displayName = record.displayName ?? record.postScriptName ?? "Unknown"
         nameLabel.stringValue = displayName
 
-        if let psName = record.postScriptName,
-           let font = NSFont(name: psName, size: 15) {
+        if let font = FontLoader.font(for: record, size: 15) {
             nameLabel.font = font
         } else {
             nameLabel.font = .systemFont(ofSize: 15)

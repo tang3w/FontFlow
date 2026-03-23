@@ -150,23 +150,7 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
     }
 
     private func loadFont(for record: FontRecord, size: CGFloat, variationValues: [UInt32: Double]?) -> NSFont {
-        var font: NSFont?
-
-        // Try by PostScript name first
-        if let psName = record.postScriptName {
-            font = NSFont(name: psName, size: size)
-        }
-
-        // Fallback: create from file URL via CoreText
-        if font == nil, let filePath = record.filePath {
-            let url = URL(fileURLWithPath: filePath)
-            if let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor],
-               let descriptor = descriptors.first {
-                font = CTFontCreateWithFontDescriptor(descriptor, size, nil) as NSFont
-            }
-        }
-
-        guard var resolvedFont = font else {
+        guard var resolvedFont = FontLoader.font(for: record, size: size) else {
             return .systemFont(ofSize: size)
         }
 

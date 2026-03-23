@@ -140,8 +140,7 @@ class FontGridItem: NSCollectionViewItem {
         nameLabel.stringValue = displayName
         previewLabel.stringValue = "Aa"
 
-        if let psName = record.postScriptName,
-           let font = NSFont(name: psName, size: 36) {
+        if let font = FontLoader.font(for: record, size: 36) {
             previewLabel.font = font
         } else {
             previewLabel.font = .systemFont(ofSize: 36)
