@@ -21,6 +21,17 @@ extension NSToolbarItem.Identifier {
 
 // MARK: - MainSplitViewController
 
+private final class MainSplitView: NSSplitView {
+
+    override var dividerColor: NSColor {
+        guard effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua else {
+            return super.dividerColor
+        }
+
+        return NSColor(white: 1.0, alpha: 0.14)
+    }
+}
+
 class MainSplitViewController: NSSplitViewController {
 
     private let managedObjectContext: NSManagedObjectContext
@@ -50,6 +61,10 @@ class MainSplitViewController: NSSplitViewController {
         fontDetailViewController = FontDetailViewController()
 
         super.init(nibName: nil, bundle: nil)
+
+        splitView = MainSplitView()
+        splitView.isVertical = true
+        splitView.dividerStyle = .thin
     }
 
     @available(*, unavailable)
