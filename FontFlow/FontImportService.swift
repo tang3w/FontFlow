@@ -56,6 +56,10 @@ typealias ImportProgressHandler = (_ processed: Int, _ total: Int) -> Void
 /// detects duplicates, creates Core Data records, and generates security-scoped bookmarks.
 struct FontImportService {
 
+    private enum ImportError: Error {
+        case bookmarkCreationFailed(URL, underlyingError: Error)
+    }
+
     /// Imports fonts from the given file or folder URLs.
     ///
     /// - Parameters:
@@ -157,12 +161,21 @@ struct FontImportService {
             return [FontImportItem(fileURL: fileURL, postScriptName: nil, status: .failed(error))]
         }
 
-        // Generate security-scoped bookmark (best-effort).
-        let bookmarkData = try? fileURL.bookmarkData(
-            options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
-            includingResourceValuesForKeys: nil,
-            relativeTo: nil
-        )
+        // Generate security-scoped bookmark. This is required for future access.
+        let bookmarkData: Data
+        do {
+            bookmarkData = try fileURL.bookmarkData(
+                options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+        } catch {
+            return [FontImportItem(
+                fileURL: fileURL,
+                postScriptName: nil,
+                status: .failed(ImportError.bookmarkCreationFailed(fileURL, underlyingError: error))
+            )]
+        }
 
         // Process each face in the file.
         var items: [FontImportItem] = []
@@ -189,7 +202,7 @@ struct FontImportService {
         fileURL: URL,
         fileSize: Int64,
         fileHash: String,
-        bookmarkData: Data?,
+        bookmarkData: Data,
         context: NSManagedObjectContext
     ) -> FontImportItem {
         let psName = face.postScriptName

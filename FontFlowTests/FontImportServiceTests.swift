@@ -84,10 +84,7 @@ struct FontImportServiceTests {
             return
         }
 
-        // Bookmark creation may fail in test environment (no sandbox),
-        // but we verify the field was at least attempted.
-        // In a sandboxed app, bookmarkData would be non-nil.
-        _ = record.bookmarkData // Access doesn't crash
+        #expect(record.bookmarkData != nil)
     }
 
     @Test func importCreatesFontFamily() throws {
