@@ -23,11 +23,14 @@ class FontGridItem: NSCollectionViewItem {
         override init(frame frameRect: NSRect) {
             super.init(frame: frameRect)
             wantsLayer = true
+            layer?.cornerRadius = 15
+            layer?.cornerCurve = .continuous
+            layer?.borderWidth = 1
         }
 
+        @available(*, unavailable)
         required init?(coder: NSCoder) {
-            super.init(coder: coder)
-            wantsLayer = true
+            fatalError("init(coder:) is not supported")
         }
 
         override func viewDidChangeEffectiveAppearance() {
@@ -35,25 +38,19 @@ class FontGridItem: NSCollectionViewItem {
             needsDisplay = true
         }
 
-        override func draw(_ dirtyRect: NSRect) {
-            super.draw(dirtyRect)
+        override var wantsUpdateLayer: Bool { true }
 
-            let path = NSBezierPath(roundedRect: bounds, xRadius: 10, yRadius: 10)
+        override func updateLayer() {
+            guard let layer else { return }
 
             if isHighlighted {
-                NSColor.controlAccentColor.withAlphaComponent(0.10).setFill()
-                path.fill()
-
-                NSColor.controlAccentColor.setStroke()
-                path.lineWidth = 2
-                path.stroke()
+                layer.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.10).cgColor
+                layer.borderColor = NSColor.controlAccentColor.cgColor
+                layer.borderWidth = 2
             } else {
-                NSColor.quaternaryLabelColor.withAlphaComponent(0.06).setFill()
-                path.fill()
-
-                NSColor.separatorColor.setStroke()
-                path.lineWidth = 1
-                path.stroke()
+                layer.backgroundColor = NSColor.quaternaryLabelColor.withAlphaComponent(0.06).cgColor
+                layer.borderColor = NSColor.separatorColor.cgColor
+                layer.borderWidth = 1
             }
         }
     }
@@ -95,6 +92,10 @@ class FontGridItem: NSCollectionViewItem {
         return label
     }()
 
+    override init(nibName nibNameOrNil: NSNib.Name?, bundle nibBundleOrNil: Bundle?) {
+        super.init(nibName: nil, bundle: nil)
+    }
+
     override func loadView() {
         let root = NSView()
         view = root
@@ -121,6 +122,11 @@ class FontGridItem: NSCollectionViewItem {
         ])
 
         updateSelectionHighlight()
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
     }
 
     override var isSelected: Bool {
