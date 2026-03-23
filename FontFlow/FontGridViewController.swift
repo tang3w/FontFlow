@@ -14,6 +14,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
 
     private enum LayoutMetrics {
         static let horizontalEdgeInset: CGFloat = 8
+        static let headerHorizontalInset: CGFloat = 2
         static let minimumItemWidth: CGFloat = 110
         static let preferredItemWidth: CGFloat = 125
         static let maximumItemWidth: CGFloat = 160
@@ -254,6 +255,12 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
             layoutSize: headerSize,
             elementKind: FontSectionHeaderView.elementKind,
             alignment: .top
+        )
+        header.contentInsets = NSDirectionalEdgeInsets(
+            top: 0,
+            leading: LayoutMetrics.headerHorizontalInset,
+            bottom: 0,
+            trailing: LayoutMetrics.headerHorizontalInset
         )
         header.pinToVisibleBounds = true
         section.boundarySupplementaryItems = [header]
