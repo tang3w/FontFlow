@@ -19,6 +19,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         static let preferredItemWidth: CGFloat = 125
         static let maximumItemWidth: CGFloat = 160
         static let itemHeightPadding: CGFloat = 32
+        static let sectionTopInset: CGFloat = 8
         static let verticalGroupSpacing: CGFloat = 8
         static let sectionBottomInset: CGFloat = 12
     }
@@ -241,7 +242,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         let section = NSCollectionLayoutSection(group: group)
         section.interGroupSpacing = LayoutMetrics.verticalGroupSpacing
         section.contentInsets = NSDirectionalEdgeInsets(
-            top: 0,
+            top: LayoutMetrics.sectionTopInset,
             leading: 0,
             bottom: LayoutMetrics.sectionBottomInset,
             trailing: 0
