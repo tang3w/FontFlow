@@ -11,9 +11,22 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
     static let elementKind = "SectionHeader"
     static let identifier = NSUserInterfaceItemIdentifier("FontSectionHeader")
-    static let estimatedHeight: CGFloat = 40
+    static let estimatedHeight: CGFloat = 44
 
     var onToggle: (() -> Void)?
+
+    private let backgroundEffectView: NSVisualEffectView = {
+        let effectView = NSVisualEffectView()
+        effectView.material = .headerView
+        effectView.blendingMode = .withinWindow
+        effectView.state = .active
+        effectView.translatesAutoresizingMaskIntoConstraints = false
+        effectView.wantsLayer = true
+        effectView.layer?.cornerRadius = 16
+        effectView.layer?.cornerCurve = .continuous
+        effectView.layer?.borderWidth = 1
+        return effectView
+    }()
 
     private let chevronImageView: NSImageView = {
         let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .medium)
@@ -48,22 +61,28 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         super.init(frame: frameRect)
         wantsLayer = true
 
-        addSubview(nameLabel)
-        addSubview(countLabel)
-        addSubview(chevronImageView)
+        addSubview(backgroundEffectView)
+        backgroundEffectView.addSubview(nameLabel)
+        backgroundEffectView.addSubview(countLabel)
+        backgroundEffectView.addSubview(chevronImageView)
 
         NSLayoutConstraint.activate([
-            nameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            nameLabel.topAnchor.constraint(equalTo: topAnchor, constant: 6),
+            backgroundEffectView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 6),
+            backgroundEffectView.topAnchor.constraint(equalTo: topAnchor, constant: 2),
+            backgroundEffectView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -2),
+
+            nameLabel.leadingAnchor.constraint(equalTo: backgroundEffectView.leadingAnchor, constant: 14),
+            nameLabel.topAnchor.constraint(equalTo: backgroundEffectView.topAnchor, constant: 7),
             nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: chevronImageView.leadingAnchor, constant: -8),
 
             countLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             countLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 1),
-            countLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
+            countLabel.bottomAnchor.constraint(equalTo: backgroundEffectView.bottomAnchor, constant: -7),
             countLabel.trailingAnchor.constraint(lessThanOrEqualTo: chevronImageView.leadingAnchor, constant: -8),
 
-            chevronImageView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
-            chevronImageView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            chevronImageView.trailingAnchor.constraint(equalTo: backgroundEffectView.trailingAnchor, constant: -14),
+            chevronImageView.centerYAnchor.constraint(equalTo: backgroundEffectView.centerYAnchor),
             chevronImageView.widthAnchor.constraint(equalToConstant: 12),
         ])
     }
@@ -71,7 +90,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
-        layer?.backgroundColor = NSColor.controlBackgroundColor.cgColor
+        backgroundEffectView.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.1).cgColor
     }
 
     @available(*, unavailable)
