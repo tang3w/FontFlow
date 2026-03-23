@@ -13,7 +13,7 @@ import CoreData
 class FontGridViewController: NSViewController, FontBrowserChildViewControlling {
 
     private enum LayoutMetrics {
-        static let horizontalEdgeInset: CGFloat = 8
+        static let horizontalEdgeInset: CGFloat = 2
         static let headerHorizontalInset: CGFloat = 2
         static let minimumItemWidth: CGFloat = 110
         static let preferredItemWidth: CGFloat = 125
