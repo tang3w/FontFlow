@@ -114,7 +114,19 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     }
 
     override func mouseDown(with event: NSEvent) {
-        onToggle?()
+        // Consume the event to prevent NSCollectionView default behavior
+        // but do not trigger the toggle yet to prevent layout shifting mid-click.
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        // Ignore double clicks to prevent accidental double-toggling
+        guard event.clickCount == 1 else { return }
+
+        // Ensure the user released the mouse inside the header
+        let location = convert(event.locationInWindow, from: nil)
+        if bounds.contains(location) {
+            onToggle?()
+        }
     }
 
     private func updateChevron(collapsed: Bool) {
