@@ -90,6 +90,15 @@ class FontBrowserViewController: NSViewController {
         return view
     }()
 
+    private let separatorView: NSBox = {
+        let box = NSBox()
+        box.boxType = .custom
+        box.borderWidth = 0
+        box.fillColor = .separatorColor
+        box.translatesAutoresizingMaskIntoConstraints = false
+        return box
+    }()
+
     // MARK: - Lifecycle
 
     override func loadView() {
@@ -102,6 +111,7 @@ class FontBrowserViewController: NSViewController {
         childHostingView.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(childHostingView)
         view.addSubview(headerView)
+        view.addSubview(separatorView)
 
         NSLayoutConstraint.activate([
             childHostingView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -111,7 +121,11 @@ class FontBrowserViewController: NSViewController {
             headerView.topAnchor.constraint(equalTo: view.topAnchor),
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            headerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: LayoutMetrics.headerContentHeight)
+            headerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: LayoutMetrics.headerContentHeight),
+            separatorView.bottomAnchor.constraint(equalTo: headerView.bottomAnchor),
+            separatorView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            separatorView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            separatorView.heightAnchor.constraint(equalToConstant: 1)
         ])
 
         wireChild(gridViewController)
