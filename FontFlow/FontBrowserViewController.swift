@@ -62,6 +62,10 @@ protocol FontBrowserChildViewControlling: AnyObject {
 
 class FontBrowserViewController: NSViewController {
 
+    private enum LayoutMetrics {
+        static let headerContentHeight: CGFloat = 44
+    }
+
     weak var delegate: FontBrowserSelectionDelegate?
     var managedObjectContext: NSManagedObjectContext!
 
@@ -70,9 +74,21 @@ class FontBrowserViewController: NSViewController {
     private var currentViewMode: FontViewMode = .grid
     private var collapsedSections: Set<String> = []
 
+    private let childHostingView = AdditionalSafeAreaHostingView(
+        additionalInsets: NSEdgeInsets(top: LayoutMetrics.headerContentHeight, left: 0, bottom: 0, right: 0)
+    )
     private let gridViewController = FontGridViewController()
     private let listViewController = FontListViewController()
     private var activeChild: (NSViewController & FontBrowserChildViewControlling)?
+
+    private let headerView: NSVisualEffectView = {
+        let view = NSVisualEffectView()
+        view.material = .headerView
+        view.blendingMode = .withinWindow
+        view.state = .followsWindowActiveState
+        view.translatesAutoresizingMaskIntoConstraints = false
+        return view
+    }()
 
     // MARK: - Lifecycle
 
@@ -82,6 +98,21 @@ class FontBrowserViewController: NSViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+
+        childHostingView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(childHostingView)
+        view.addSubview(headerView)
+
+        NSLayoutConstraint.activate([
+            childHostingView.topAnchor.constraint(equalTo: view.topAnchor),
+            childHostingView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            childHostingView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            childHostingView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            headerView.topAnchor.constraint(equalTo: view.topAnchor),
+            headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            headerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: LayoutMetrics.headerContentHeight)
+        ])
 
         wireChild(gridViewController)
         wireChild(listViewController)
@@ -106,9 +137,15 @@ class FontBrowserViewController: NSViewController {
         }
 
         addChild(child)
-        child.view.frame = view.bounds
-        child.view.autoresizingMask = [.width, .height]
-        view.addSubview(child.view)
+        child.view.translatesAutoresizingMaskIntoConstraints = false
+        childHostingView.addSubview(child.view)
+
+        NSLayoutConstraint.activate([
+            child.view.topAnchor.constraint(equalTo: childHostingView.topAnchor),
+            child.view.leadingAnchor.constraint(equalTo: childHostingView.leadingAnchor),
+            child.view.trailingAnchor.constraint(equalTo: childHostingView.trailingAnchor),
+            child.view.bottomAnchor.constraint(equalTo: childHostingView.bottomAnchor)
+        ])
 
         activeChild = child
     }
