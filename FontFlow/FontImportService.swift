@@ -92,7 +92,7 @@ struct FontImportService {
             } catch {
                 // If save fails, add a single failed item noting the save error.
                 // The individual items already recorded their status optimistically.
-                NSLog("FontImportService: Core Data save failed — \(error)")
+                assertionFailure("Failed to save imported fonts")
             }
         }
 

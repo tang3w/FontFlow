@@ -169,11 +169,11 @@ class MainSplitViewController: NSSplitViewController {
 
         panel.beginSheetModal(for: view.window!) { [weak self] response in
             guard response == .OK, let self = self else { return }
-            let result = FontImportService.importFonts(
+            // Handle the import result in the future.
+            _ = FontImportService.importFonts(
                 from: panel.urls,
                 context: self.managedObjectContext
             )
-            NSLog("Import complete: \(result.importedCount) imported, \(result.duplicateCount) duplicates, \(result.failedCount) failed")
             self.sidebarViewController.reloadSidebar()
             self.updateFontList()
         }

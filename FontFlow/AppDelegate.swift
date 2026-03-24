@@ -72,7 +72,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let context = persistentContainer.viewContext
 
         if !context.commitEditing() {
-            NSLog("\(NSStringFromClass(type(of: self))) unable to commit editing before saving")
+            assertionFailure("Failed to commit editing before save")
+            return
         }
         if context.hasChanges {
             do {
@@ -95,7 +96,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let context = persistentContainer.viewContext
         
         if !context.commitEditing() {
-            NSLog("\(NSStringFromClass(type(of: self))) unable to commit editing to terminate")
+            assertionFailure("Failed to commit editing before terminate")
             return .terminateCancel
         }
         

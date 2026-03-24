@@ -72,11 +72,7 @@ enum FontFileAccessService {
                 )
                 return resolution.url
             } catch {
-                NSLog(
-                    "FontFileAccessService: Failed to resolve bookmark for %@ - %@",
-                    record.postScriptName ?? "Unknown",
-                    String(describing: error)
-                )
+                assertionFailure("Failed to resolve bookmark")
             }
         }
 
@@ -113,17 +109,9 @@ enum FontFileAccessService {
                 return false
             }
 
-            NSLog(
-                "FontFileAccessService: Refreshed stale bookmark for %@",
-                record.postScriptName ?? "Unknown"
-            )
             return true
         } catch {
-            NSLog(
-                "FontFileAccessService: Failed to refresh stale bookmark for %@ - %@",
-                record.postScriptName ?? "Unknown",
-                String(describing: error)
-            )
+            assertionFailure("Failed to refresh bookmark")
             return false
         }
     }
@@ -180,12 +168,8 @@ enum FontFileAccessService {
             }
         }
 
-        if let saveError {
-            NSLog(
-                "FontFileAccessService: Failed to persist refreshed bookmark for %@ - %@",
-                record.postScriptName ?? "Unknown",
-                String(describing: saveError)
-            )
+        if saveError != nil {
+            assertionFailure("Failed to persist bookmark")
             return false
         }
 
