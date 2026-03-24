@@ -36,48 +36,10 @@ enum FontLoader {
         }) ?? descriptors.first
     }
 
-    static func resolvedFileURL(for record: FontRecord) -> URL? {
-        if let bookmarkData = record.bookmarkData {
-            var isStale = false
-
-            do {
-                let url = try URL(
-                    resolvingBookmarkData: bookmarkData,
-                    options: [.withSecurityScope, .withoutUI],
-                    relativeTo: nil,
-                    bookmarkDataIsStale: &isStale
-                )
-
-                if isStale {
-                    NSLog("FontLoader: Resolved stale bookmark for %@", record.postScriptName ?? "Unknown")
-                }
-
-                return url
-            } catch {
-                NSLog("FontLoader: Failed to resolve bookmark for %@ - %@", record.postScriptName ?? "Unknown", String(describing: error))
-            }
-        }
-
-        guard let filePath = record.filePath, !filePath.isEmpty else {
-            return nil
-        }
-
-        return URL(fileURLWithPath: filePath)
-    }
-
     private static func fontDescriptors(for record: FontRecord) -> [CTFontDescriptor]? {
-        guard let fileURL = resolvedFileURL(for: record) else {
-            return nil
+        FontFileAccessService.withResolvedFileAccess(for: record) { fileURL in
+            CTFontManagerCreateFontDescriptorsFromURL(fileURL as CFURL) as? [CTFontDescriptor]
         }
-
-        let didAccessSecurityScope = fileURL.startAccessingSecurityScopedResource()
-        defer {
-            if didAccessSecurityScope {
-                fileURL.stopAccessingSecurityScopedResource()
-            }
-        }
-
-        return CTFontManagerCreateFontDescriptorsFromURL(fileURL as CFURL) as? [CTFontDescriptor]
     }
 
     private static func descriptorPostScriptName(for descriptor: CTFontDescriptor) -> String? {

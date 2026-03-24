@@ -164,11 +164,7 @@ struct FontImportService {
         // Generate security-scoped bookmark. This is required for future access.
         let bookmarkData: Data
         do {
-            bookmarkData = try fileURL.bookmarkData(
-                options: [.withSecurityScope, .securityScopeAllowOnlyReadAccess],
-                includingResourceValuesForKeys: nil,
-                relativeTo: nil
-            )
+            bookmarkData = try FontFileAccessService.bookmarkData(for: fileURL)
         } catch {
             return [FontImportItem(
                 fileURL: fileURL,

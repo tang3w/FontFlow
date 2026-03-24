@@ -56,7 +56,7 @@ struct FontLoaderTests {
 
         let font = try #require(FontLoader.font(for: record, size: 24))
         #expect(font.fontName == record.postScriptName)
-        #expect(FontLoader.resolvedFileURL(for: record)?.lastPathComponent == fileURL.lastPathComponent)
+        #expect(FontFileAccessService.resolvedFileURL(for: record)?.lastPathComponent == fileURL.lastPathComponent)
     }
 
     @Test func selectsMatchingFaceFromFontCollection() throws {
@@ -77,5 +77,97 @@ struct FontLoaderTests {
         let descriptor = try #require(FontLoader.fontDescriptor(for: record))
         let descriptorName = CTFontDescriptorCopyAttribute(descriptor, kCTFontNameAttribute) as? String
         #expect(descriptorName == targetFace.postScriptName)
+    }
+
+    @Test func staleBookmarkRefreshesStoredBookmarkData() throws {
+        let context = try makeInMemoryContext()
+        let originalBookmarkData = Data("old-bookmark".utf8)
+        let refreshedBookmarkData = Data("new-bookmark".utf8)
+        let resolvedURL = URL(fileURLWithPath: "/tmp/stale-font.ttf")
+
+        let record = FontRecord(context: context)
+        record.id = UUID()
+        record.postScriptName = "StaleFont-Regular"
+        record.displayName = "Stale Font Regular"
+        record.familyName = "Stale Font"
+        record.styleName = "Regular"
+        record.filePath = resolvedURL.path
+        record.bookmarkData = originalBookmarkData
+        record.importedDate = Date()
+        try context.save()
+
+        let returnedURL = FontFileAccessService.resolvedFileURL(
+            for: record,
+            bookmarkResolver: { _ in
+                FontFileAccessService.BookmarkResolution(url: resolvedURL, isStale: true)
+            },
+            bookmarkDataProvider: { _ in
+                refreshedBookmarkData
+            }
+        )
+
+        #expect(returnedURL == resolvedURL)
+        #expect(record.bookmarkData == refreshedBookmarkData)
+    }
+
+    @Test func nonStaleBookmarkDoesNotRegenerate() throws {
+        let context = try makeInMemoryContext()
+        let originalBookmarkData = Data("stable-bookmark".utf8)
+        let resolvedURL = URL(fileURLWithPath: "/tmp/stable-font.ttf")
+
+        let record = FontRecord(context: context)
+        record.id = UUID()
+        record.postScriptName = "StableFont-Regular"
+        record.displayName = "Stable Font Regular"
+        record.familyName = "Stable Font"
+        record.styleName = "Regular"
+        record.filePath = resolvedURL.path
+        record.bookmarkData = originalBookmarkData
+        record.importedDate = Date()
+        try context.save()
+
+        var bookmarkProviderCallCount = 0
+        let returnedURL = FontFileAccessService.resolvedFileURL(
+            for: record,
+            bookmarkResolver: { _ in
+                FontFileAccessService.BookmarkResolution(url: resolvedURL, isStale: false)
+            },
+            bookmarkDataProvider: { _ in
+                bookmarkProviderCallCount += 1
+                return Data("should-not-be-used".utf8)
+            }
+        )
+
+        #expect(returnedURL == resolvedURL)
+        #expect(bookmarkProviderCallCount == 0)
+        #expect(record.bookmarkData == originalBookmarkData)
+    }
+
+    @Test func fallsBackToFilePathWhenBookmarkResolutionFails() throws {
+        let context = try makeInMemoryContext()
+        let fallbackURL = URL(fileURLWithPath: "/tmp/fallback-font.ttf")
+
+        let record = FontRecord(context: context)
+        record.id = UUID()
+        record.postScriptName = "FallbackFont-Regular"
+        record.displayName = "Fallback Font Regular"
+        record.familyName = "Fallback Font"
+        record.styleName = "Regular"
+        record.filePath = fallbackURL.path
+        record.bookmarkData = Data("broken-bookmark".utf8)
+        record.importedDate = Date()
+
+        let returnedURL = FontFileAccessService.resolvedFileURL(
+            for: record,
+            bookmarkResolver: { _ in
+                struct BookmarkFailure: Error {}
+                throw BookmarkFailure()
+            },
+            bookmarkDataProvider: { _ in
+                Data()
+            }
+        )
+
+        #expect(returnedURL == fallbackURL)
     }
 }
