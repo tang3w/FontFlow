@@ -65,7 +65,7 @@ class FontGridItem: NSCollectionViewItem {
 
     private let previewLabel: NSTextField = {
         let label = NSTextField(labelWithString: "")
-        label.font = .systemFont(ofSize: 36)
+        label.font = .systemFont(ofSize: 48)
         label.alignment = .center
         label.lineBreakMode = .byTruncatingTail
         label.maximumNumberOfLines = 1
@@ -140,17 +140,17 @@ class FontGridItem: NSCollectionViewItem {
         nameLabel.stringValue = displayName
         previewLabel.stringValue = "Aa"
 
-        if let font = FontLoader.font(for: record, size: 36) {
+        if let font = FontLoader.font(for: record, size: 48) {
             previewLabel.font = font
         } else {
-            previewLabel.font = .systemFont(ofSize: 36)
+            previewLabel.font = .systemFont(ofSize: 48)
         }
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
         previewLabel.stringValue = ""
-        previewLabel.font = .systemFont(ofSize: 36)
+        previewLabel.font = .systemFont(ofSize: 48)
         nameLabel.stringValue = ""
         updateSelectionHighlight()
     }
