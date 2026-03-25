@@ -105,9 +105,9 @@ class FontGridItem: NSCollectionViewItem {
         view.addSubview(nameLabel)
 
         NSLayoutConstraint.activate([
-            previewCardView.topAnchor.constraint(equalTo: view.topAnchor, constant: 4),
-            previewCardView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 6),
-            previewCardView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -6),
+            previewCardView.topAnchor.constraint(equalTo: view.topAnchor),
+            previewCardView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            previewCardView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             previewCardView.heightAnchor.constraint(equalTo: previewCardView.widthAnchor),
 
             previewLabel.centerXAnchor.constraint(equalTo: previewCardView.centerXAnchor),
@@ -116,9 +116,9 @@ class FontGridItem: NSCollectionViewItem {
             previewLabel.trailingAnchor.constraint(lessThanOrEqualTo: previewCardView.trailingAnchor, constant: -8),
 
             nameLabel.topAnchor.constraint(equalTo: previewCardView.bottomAnchor, constant: 8),
-            nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 6),
-            nameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -6),
-            nameLabel.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor, constant: -4),
+            nameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            nameLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            nameLabel.bottomAnchor.constraint(lessThanOrEqualTo: view.bottomAnchor),
         ])
 
         updateSelectionHighlight()

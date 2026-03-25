@@ -11,7 +11,8 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
     static let elementKind = "SectionHeader"
     static let identifier = NSUserInterfaceItemIdentifier("FontSectionHeader")
-    static let estimatedHeight: CGFloat = 44
+    static let estimatedHeight: CGFloat = 54
+    static let contentInsets = NSEdgeInsets(top: 10, left: 10, bottom: 0, right: 10)
 
     var onToggle: (() -> Void)?
 
@@ -66,22 +67,24 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         backgroundEffectView.addSubview(countLabel)
         backgroundEffectView.addSubview(chevronImageView)
 
-        NSLayoutConstraint.activate([
-            backgroundEffectView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 6),
-            backgroundEffectView.topAnchor.constraint(equalTo: topAnchor, constant: 2),
-            backgroundEffectView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
-            backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -2),
+        let contentInsets = Self.contentInsets
 
-            nameLabel.leadingAnchor.constraint(equalTo: backgroundEffectView.leadingAnchor, constant: 14),
-            nameLabel.topAnchor.constraint(equalTo: backgroundEffectView.topAnchor, constant: 7),
-            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: chevronImageView.leadingAnchor, constant: -8),
+        NSLayoutConstraint.activate([
+            backgroundEffectView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: contentInsets.left),
+            backgroundEffectView.topAnchor.constraint(equalTo: topAnchor, constant: contentInsets.top),
+            backgroundEffectView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -contentInsets.right),
+            backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -contentInsets.bottom),
+
+            nameLabel.leadingAnchor.constraint(equalTo: backgroundEffectView.leadingAnchor, constant: contentInsets.left + 8),
+            nameLabel.topAnchor.constraint(equalTo: backgroundEffectView.topAnchor, constant: contentInsets.top - 5),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: chevronImageView.leadingAnchor, constant: -(contentInsets.left + 2)),
 
             countLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             countLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 1),
-            countLabel.bottomAnchor.constraint(equalTo: backgroundEffectView.bottomAnchor, constant: -7),
-            countLabel.trailingAnchor.constraint(lessThanOrEqualTo: chevronImageView.leadingAnchor, constant: -8),
+            countLabel.bottomAnchor.constraint(equalTo: backgroundEffectView.bottomAnchor, constant: -(contentInsets.top - 5)),
+            countLabel.trailingAnchor.constraint(lessThanOrEqualTo: chevronImageView.leadingAnchor, constant: -(contentInsets.left + 2)),
 
-            chevronImageView.trailingAnchor.constraint(equalTo: backgroundEffectView.trailingAnchor, constant: -14),
+            chevronImageView.trailingAnchor.constraint(equalTo: backgroundEffectView.trailingAnchor, constant: -(contentInsets.right + 8)),
             chevronImageView.centerYAnchor.constraint(equalTo: backgroundEffectView.centerYAnchor),
             chevronImageView.widthAnchor.constraint(equalToConstant: 12),
         ])

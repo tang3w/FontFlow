@@ -13,15 +13,16 @@ import CoreData
 class FontGridViewController: NSViewController, FontBrowserChildViewControlling {
 
     private enum LayoutMetrics {
-        static let horizontalEdgeInset: CGFloat = 2
-        static let headerHorizontalInset: CGFloat = 2
+        static let horizontalEdgeInset: CGFloat = 5
+        static let headerHorizontalInset: CGFloat = 0
         static let minimumItemWidth: CGFloat = 110
         static let preferredItemWidth: CGFloat = 125
         static let maximumItemWidth: CGFloat = 160
         static let itemHeightPadding: CGFloat = 32
-        static let sectionTopInset: CGFloat = 8
-        static let verticalGroupSpacing: CGFloat = 8
-        static let sectionBottomInset: CGFloat = 12
+        static let itemInsets = NSEdgeInsets(top: 10, left: 5, bottom: 0, right: 5)
+        static let sectionTopInset: CGFloat = 0
+        static let verticalGroupSpacing: CGFloat = 0
+        static let sectionBottomInset: CGFloat = 0
     }
 
     var onSelectionChanged: (([FontRecord]) -> Void)?
@@ -222,6 +223,12 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
             heightDimension: .absolute(itemHeight)
         )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
+        item.contentInsets = NSDirectionalEdgeInsets(
+            top: LayoutMetrics.itemInsets.top,
+            leading: LayoutMetrics.itemInsets.left,
+            bottom: LayoutMetrics.itemInsets.bottom,
+            trailing: LayoutMetrics.itemInsets.right
+        )
 
         let groupSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),
