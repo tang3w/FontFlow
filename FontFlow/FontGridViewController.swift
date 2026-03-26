@@ -23,6 +23,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         static let sectionTopInset: CGFloat = 0
         static let verticalGroupSpacing: CGFloat = 0
         static let sectionBottomInset: CGFloat = 0
+        static let lastSectionBottomInset: CGFloat = 16
     }
 
     var onSelectionChanged: (([FontRecord]) -> Void)?
@@ -153,18 +154,32 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     // MARK: - Layout
 
     private func makeLayout() -> NSCollectionViewCompositionalLayout {
-        NSCollectionViewCompositionalLayout { [weak self] _, environment in
-            self?.makeGridSection(for: environment) ?? Self.makeFallbackSection(for: environment)
+        NSCollectionViewCompositionalLayout { [weak self] sectionIndex, environment in
+            self?.makeGridSection(sectionIndex: sectionIndex, for: environment)
+                ?? Self.makeFallbackSection(for: environment)
         }
     }
 
-    private func makeGridSection(for environment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
+    private func makeGridSection(
+        sectionIndex: Int,
+        for environment: NSCollectionLayoutEnvironment
+    ) -> NSCollectionLayoutSection {
         let contentWidth = max(
             environment.container.effectiveContentSize.width - (LayoutMetrics.horizontalEdgeInset * 2),
             LayoutMetrics.minimumItemWidth
         )
         let columnCount = resolvedColumnCount(for: contentWidth)
-        return Self.makeSection(contentWidth: contentWidth, columnCount: columnCount)
+        // Only the final section gets extra bottom space so the last visible row
+        // sits above the scroll view's adjusted bottom edge. Earlier sections
+        // keep a zero bottom inset to avoid introducing gaps between families.
+        let bottomInset = sectionIndex == familyNodes.indices.last
+            ? LayoutMetrics.lastSectionBottomInset
+            : LayoutMetrics.sectionBottomInset
+        return Self.makeSection(
+            contentWidth: contentWidth,
+            columnCount: columnCount,
+            bottomInset: bottomInset
+        )
     }
 
     private func resolvedColumnCount(for availableWidth: CGFloat) -> Int {
@@ -211,10 +226,18 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
             LayoutMetrics.minimumItemWidth
         )
         let columnCount = max(1, Int(contentWidth / LayoutMetrics.preferredItemWidth))
-        return makeSection(contentWidth: contentWidth, columnCount: columnCount)
+        return makeSection(
+            contentWidth: contentWidth,
+            columnCount: columnCount,
+            bottomInset: LayoutMetrics.sectionBottomInset
+        )
     }
 
-    private static func makeSection(contentWidth: CGFloat, columnCount: Int) -> NSCollectionLayoutSection {
+    private static func makeSection(
+        contentWidth: CGFloat,
+        columnCount: Int,
+        bottomInset: CGFloat
+    ) -> NSCollectionLayoutSection {
         // Keep each item width on a whole-point boundary so item self-sizing stays
         // stable. The grid item measures its preferred height from the resolved
         // width, and fractional widths can make multiline label wrapping flip
@@ -260,10 +283,12 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
 
         let section = NSCollectionLayoutSection(group: group)
         section.interGroupSpacing = LayoutMetrics.verticalGroupSpacing
+        // This inset is supplied per section so callers can add trailing space
+        // only after the last grid row, without changing every section layout.
         section.contentInsets = NSDirectionalEdgeInsets(
             top: LayoutMetrics.sectionTopInset,
             leading: 0,
-            bottom: LayoutMetrics.sectionBottomInset,
+            bottom: bottomInset,
             trailing: 0
         )
 
