@@ -215,8 +215,20 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     }
 
     private static func makeSection(contentWidth: CGFloat, columnCount: Int) -> NSCollectionLayoutSection {
-        let itemWidth = contentWidth / CGFloat(columnCount)
+        // Keep each item width on a whole-point boundary so item self-sizing stays
+        // stable. The grid item measures its preferred height from the resolved
+        // width, and fractional widths can make multiline label wrapping flip
+        // between line breaks during layout.
+        let itemWidth = floor(contentWidth / CGFloat(columnCount))
         let estimatedItemHeight = itemWidth + LayoutMetrics.itemHeightPadding
+        let usedWidth = itemWidth * CGFloat(columnCount)
+        let leftoverWidth = max(0, contentWidth - usedWidth)
+        // Redistribute the width trimmed by `floor` between columns so the grid
+        // keeps its fixed outer insets instead of drifting extra space to the
+        // trailing edge.
+        let interItemSpacing = columnCount > 1
+            ? leftoverWidth / CGFloat(columnCount - 1)
+            : 0
 
         let itemSize = NSCollectionLayoutSize(
             widthDimension: .absolute(itemWidth),
@@ -238,7 +250,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
             layoutSize: groupSize,
             subitems: Array(repeating: item, count: columnCount)
         )
-        group.interItemSpacing = .fixed(0)
+        group.interItemSpacing = .fixed(interItemSpacing)
         group.contentInsets = NSDirectionalEdgeInsets(
             top: 0,
             leading: LayoutMetrics.horizontalEdgeInset,
