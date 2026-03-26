@@ -96,7 +96,7 @@ final class FontGridContentView: NSView, NSCollectionViewElement {
         label.textColor = .secondaryLabelColor
         label.alignment = .center
         label.lineBreakMode = .byWordWrapping
-        label.maximumNumberOfLines = 2
+        label.maximumNumberOfLines = 3
         label.isEditable = false
         label.isBordered = false
         label.drawsBackground = false
