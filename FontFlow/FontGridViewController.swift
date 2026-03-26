@@ -19,7 +19,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         static let preferredItemWidth: CGFloat = 125
         static let maximumItemWidth: CGFloat = 160
         static let itemHeightPadding: CGFloat = 32
-        static let itemInsets = NSEdgeInsets(top: 10, left: 5, bottom: 0, right: 5)
+        static let itemInsets = NSEdgeInsets(top: 0, left: 5, bottom: 0, right: 5)
         static let sectionTopInset: CGFloat = 0
         static let verticalGroupSpacing: CGFloat = 0
         static let sectionBottomInset: CGFloat = 0
@@ -216,11 +216,11 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
 
     private static func makeSection(contentWidth: CGFloat, columnCount: Int) -> NSCollectionLayoutSection {
         let itemWidth = contentWidth / CGFloat(columnCount)
-        let itemHeight = itemWidth + LayoutMetrics.itemHeightPadding
+        let estimatedItemHeight = itemWidth + LayoutMetrics.itemHeightPadding
 
         let itemSize = NSCollectionLayoutSize(
             widthDimension: .absolute(itemWidth),
-            heightDimension: .absolute(itemHeight)
+            heightDimension: .estimated(estimatedItemHeight)
         )
         let item = NSCollectionLayoutItem(layoutSize: itemSize)
         item.contentInsets = NSDirectionalEdgeInsets(
@@ -232,7 +232,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
 
         let groupSize = NSCollectionLayoutSize(
             widthDimension: .fractionalWidth(1.0),
-            heightDimension: .absolute(itemHeight)
+            heightDimension: .estimated(estimatedItemHeight)
         )
         let group = NSCollectionLayoutGroup.horizontal(
             layoutSize: groupSize,
