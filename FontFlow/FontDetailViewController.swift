@@ -57,22 +57,7 @@ class FontDetailViewController: NSViewController {
         return button
     }()
 
-    private let fontSizeSlider: NSSlider = {
-        let slider = NSSlider(value: 48, minValue: 8, maxValue: 200, target: nil, action: nil)
-        slider.translatesAutoresizingMaskIntoConstraints = false
-        slider.widthAnchor.constraint(equalToConstant: 120).isActive = true
-        return slider
-    }()
-
-    private let fontSizeLabel: NSTextField = {
-        let label = NSTextField(labelWithString: "48 pt")
-        label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-        label.textColor = .secondaryLabelColor
-        label.alignment = .right
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.widthAnchor.constraint(equalToConstant: 48).isActive = true
-        return label
-    }()
+    private let fontSizeToolbarControl = FontSizeToolbarControl()
 
     private let lineSpacingStepper: NSStepper = {
         let stepper = NSStepper()
@@ -134,8 +119,6 @@ class FontDetailViewController: NSViewController {
 
         controlsBar.addArrangedSubview(scriptPopUp)
         controlsBar.addArrangedSubview(spacer)
-        controlsBar.addArrangedSubview(fontSizeSlider)
-        controlsBar.addArrangedSubview(fontSizeLabel)
         controlsBar.addArrangedSubview(lineSpacingStepper)
         controlsBar.addArrangedSubview(lineSpacingLabel)
 
@@ -165,14 +148,29 @@ class FontDetailViewController: NSViewController {
         scriptPopUp.target = self
         scriptPopUp.action = #selector(scriptChanged(_:))
 
-        fontSizeSlider.target = self
-        fontSizeSlider.action = #selector(fontSizeChanged(_:))
+        fontSizeToolbarControl.onFontSizeChanged = { [weak self] fontSize in
+            self?.previewController.setFontSize(fontSize)
+        }
+
+        previewController.setFontSize(fontSizeToolbarControl.fontSize)
 
         lineSpacingStepper.target = self
         lineSpacingStepper.action = #selector(lineSpacingChanged(_:))
     }
 
     // MARK: - Public
+
+    func makeFontSizeToolbarItem(itemIdentifier: NSToolbarItem.Identifier) -> NSToolbarItem {
+        // Force loadView() so toolbar control wiring is in place before attaching it.
+        _ = view
+
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        item.label = "Preview Size"
+        item.paletteLabel = "Preview Size"
+        item.toolTip = "Adjust preview size"
+        item.view = fontSizeToolbarControl
+        return item
+    }
 
     func updateFonts(_ fonts: [FontRecord]) {
         currentFonts = fonts
@@ -201,12 +199,6 @@ class FontDetailViewController: NSViewController {
         previewController.setSampleText(sample.sampleText)
     }
 
-    @objc private func fontSizeChanged(_ sender: NSSlider) {
-        let size = CGFloat(sender.doubleValue).rounded()
-        fontSizeLabel.stringValue = "\(Int(size)) pt"
-        previewController.setFontSize(size)
-    }
-
     @objc private func lineSpacingChanged(_ sender: NSStepper) {
         let spacing = sender.doubleValue
         lineSpacingLabel.stringValue = String(format: "%.1fx", spacing)
@@ -218,11 +210,18 @@ class FontDetailViewController: NSViewController {
     private func showEmpty() {
         emptyLabel.isHidden = false
         contentContainer.isHidden = true
+        updateFontSizeControlAvailability()
     }
 
     private func showContent(_ fonts: [FontRecord]) {
         emptyLabel.isHidden = true
         contentContainer.isHidden = false
+        updateFontSizeControlAvailability()
         previewController.configure(fonts: fonts)
+    }
+
+    private func updateFontSizeControlAvailability() {
+        let isEnabled = !currentFonts.isEmpty
+        fontSizeToolbarControl.isEnabled = isEnabled
     }
 }
