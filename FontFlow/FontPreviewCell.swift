@@ -21,7 +21,7 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
 
     private var currentSampleText = ""
     private var currentSampleFont: NSFont = .systemFont(ofSize: 48)
-    private var currentLineSpacing: CGFloat = 1.2
+    private var currentTextStyle = FontPreviewTextStyle.default
     private var isSampleEditable = false
 
     private let fontNameLabel: NSTextField = {
@@ -52,6 +52,15 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         return label
     }()
 
+    private let sampleBackgroundView: NSView = {
+        let view = NSView()
+        view.wantsLayer = true
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.layer?.cornerRadius = 10
+        view.layer?.masksToBounds = true
+        return view
+    }()
+
     override func loadView() {
         let root = NSView()
         root.wantsLayer = true
@@ -59,38 +68,44 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         view = root
 
         view.addSubview(fontNameLabel)
-        view.addSubview(sampleLabel)
+        view.addSubview(sampleBackgroundView)
+        sampleBackgroundView.addSubview(sampleLabel)
 
         NSLayoutConstraint.activate([
             fontNameLabel.topAnchor.constraint(equalTo: view.topAnchor, constant: 12),
             fontNameLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             fontNameLabel.trailingAnchor.constraint(lessThanOrEqualTo: view.trailingAnchor, constant: -16),
 
-            sampleLabel.topAnchor.constraint(equalTo: fontNameLabel.bottomAnchor, constant: 8),
-            sampleLabel.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
-            sampleLabel.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
-            sampleLabel.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
+            sampleBackgroundView.topAnchor.constraint(equalTo: fontNameLabel.bottomAnchor, constant: 8),
+            sampleBackgroundView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
+            sampleBackgroundView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
+            sampleBackgroundView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -12),
+
+            sampleLabel.topAnchor.constraint(equalTo: sampleBackgroundView.topAnchor, constant: 12),
+            sampleLabel.leadingAnchor.constraint(equalTo: sampleBackgroundView.leadingAnchor, constant: 12),
+            sampleLabel.trailingAnchor.constraint(equalTo: sampleBackgroundView.trailingAnchor, constant: -12),
+            sampleLabel.bottomAnchor.constraint(equalTo: sampleBackgroundView.bottomAnchor, constant: -12),
         ])
     }
 
-    func configure(record: FontRecord, sampleText: String, fontSize: CGFloat, lineSpacing: CGFloat, variationValues: [UInt32: Double]? = nil) {
+    func configure(record: FontRecord, sampleText: String, fontSize: CGFloat, textStyle: FontPreviewTextStyle, variationValues: [UInt32: Double]? = nil) {
         configure(
             record: record,
             sampleText: sampleText,
             fontSize: fontSize,
-            lineSpacing: lineSpacing,
+            textStyle: textStyle,
             variationValues: variationValues,
             isEditable: false
         )
     }
 
-    func configure(record: FontRecord, sampleText: String, fontSize: CGFloat, lineSpacing: CGFloat, variationValues: [UInt32: Double]? = nil, isEditable: Bool) {
+    func configure(record: FontRecord, sampleText: String, fontSize: CGFloat, textStyle: FontPreviewTextStyle, variationValues: [UInt32: Double]? = nil, isEditable: Bool) {
         let displayName = record.displayName ?? record.postScriptName ?? "Unknown"
         fontNameLabel.stringValue = displayName
 
         currentSampleText = sampleText
         currentSampleFont = loadFont(for: record, size: fontSize, variationValues: variationValues)
-        currentLineSpacing = lineSpacing
+        currentTextStyle = textStyle
         isSampleEditable = isEditable
 
         renderSampleText()
@@ -104,11 +119,12 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         sampleLabel.font = .systemFont(ofSize: 48)
         currentSampleText = ""
         currentSampleFont = .systemFont(ofSize: 48)
-        currentLineSpacing = 1.2
+        currentTextStyle = .default
         isSampleEditable = false
         sampleLabel.delegate = nil
         sampleLabel.isEditable = false
         sampleLabel.isSelectable = false
+        sampleBackgroundView.layer?.backgroundColor = nil
     }
 
     override func preferredLayoutAttributesFitting(_ layoutAttributes: NSCollectionViewLayoutAttributes) -> NSCollectionViewLayoutAttributes {
@@ -135,15 +151,18 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         sampleLabel.isEditable = isSampleEditable
         sampleLabel.isSelectable = isSampleEditable
         sampleLabel.font = currentSampleFont
+        sampleLabel.textColor = currentTextStyle.resolvedForegroundColor
         sampleLabel.stringValue = currentSampleText
+        sampleBackgroundView.layer?.backgroundColor = currentTextStyle.backgroundColor?.cgColor
 
         let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.lineSpacing = (currentLineSpacing - 1.0) * currentSampleFont.pointSize
+        paragraphStyle.lineSpacing = (currentTextStyle.lineSpacingMultiplier - 1.0) * currentSampleFont.pointSize
 
         sampleLabel.attributedStringValue = NSAttributedString(
             string: currentSampleText,
             attributes: [
                 .font: currentSampleFont,
+                .foregroundColor: currentTextStyle.resolvedForegroundColor,
                 .paragraphStyle: paragraphStyle,
             ]
         )

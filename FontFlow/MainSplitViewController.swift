@@ -17,6 +17,7 @@ extension NSToolbarItem.Identifier {
     static let fontSearch = NSToolbarItem.Identifier("fontSearch")
     static let previewScript = NSToolbarItem.Identifier("previewScript")
     static let previewFontSize = NSToolbarItem.Identifier("previewFontSize")
+    static let previewTextStyle = NSToolbarItem.Identifier("previewTextStyle")
     static let sidebarTrackingSeparator = NSToolbarItem.Identifier("sidebarTrackingSeparator")
     static let detailTrackingSeparator = NSToolbarItem.Identifier("detailTrackingSeparator")
 }
@@ -269,6 +270,9 @@ extension MainSplitViewController: NSToolbarDelegate {
         case .previewFontSize:
             return fontDetailViewController.makeFontSizeToolbarItem(itemIdentifier: .previewFontSize)
 
+        case .previewTextStyle:
+            return fontDetailViewController.makePreviewTextStyleToolbarItem(itemIdentifier: .previewTextStyle)
+
         case .detailTrackingSeparator:
             return NSTrackingSeparatorToolbarItem(
                 identifier: .detailTrackingSeparator,
@@ -291,6 +295,7 @@ extension MainSplitViewController: NSToolbarDelegate {
             .previewScript,
             .flexibleSpace,
             .previewFontSize,
+            .previewTextStyle,
             .flexibleSpace,
             .importFonts,
         ]
@@ -304,6 +309,7 @@ extension MainSplitViewController: NSToolbarDelegate {
             .fontSearch,
             .previewScript,
             .previewFontSize,
+            .previewTextStyle,
             .detailTrackingSeparator,
             .flexibleSpace,
             .space,

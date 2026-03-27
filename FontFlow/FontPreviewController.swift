@@ -17,7 +17,7 @@ class FontPreviewController: NSViewController, FontPreviewCellDelegate {
     private(set) var currentFonts: [FontRecord] = []
     private var currentSampleText: String = ScriptSamples.default.sampleText
     private var currentFontSize: CGFloat = 48
-    private var currentLineSpacing: CGFloat = 1.2
+    private var currentTextStyle = FontPreviewTextStyle.default
     private var currentVariationValues: [UInt32: Double] = [:]
     private var isSampleEditable = false
 
@@ -67,8 +67,15 @@ class FontPreviewController: NSViewController, FontPreviewCellDelegate {
     }
 
     func setLineSpacing(_ spacing: CGFloat) {
-        currentLineSpacing = spacing
-        refreshVisibleCellsAndLayout()
+        var nextStyle = currentTextStyle
+        nextStyle.lineSpacingMultiplier = spacing
+        setTextStyle(nextStyle)
+    }
+
+    func setTextStyle(_ style: FontPreviewTextStyle) {
+        let shouldInvalidateLayout = style.lineSpacingMultiplier != currentTextStyle.lineSpacingMultiplier
+        currentTextStyle = style
+        refreshVisibleCellsAndLayout(invalidateLayout: shouldInvalidateLayout)
     }
 
     func setVariationValues(_ values: [UInt32: Double]) {
@@ -90,20 +97,7 @@ class FontPreviewController: NSViewController, FontPreviewCellDelegate {
                 withIdentifier: FontPreviewCell.identifier,
                 for: indexPath
             ) as! FontPreviewCell
-            item.delegate = self
-
-            if indexPath.item < self.currentFonts.count {
-                let record = self.currentFonts[indexPath.item]
-                let variations = self.currentFonts.count == 1 ? self.currentVariationValues : nil
-                item.configure(
-                    record: record,
-                    sampleText: self.currentSampleText,
-                    fontSize: self.currentFontSize,
-                    lineSpacing: self.currentLineSpacing,
-                    variationValues: variations,
-                    isEditable: self.isSampleEditable
-                )
-            }
+            self.configure(item, at: indexPath)
             return item
         }
     }
@@ -117,29 +111,38 @@ class FontPreviewController: NSViewController, FontPreviewCellDelegate {
         dataSource.apply(snapshot, animatingDifferences: false)
     }
 
-    private func refreshVisibleCellsAndLayout() {
+    private func refreshVisibleCellsAndLayout(invalidateLayout: Bool = true) {
         let visibleIndexPaths = collectionView.indexPathsForVisibleItems()
 
         for indexPath in visibleIndexPaths {
             guard let item = collectionView.item(at: indexPath) as? FontPreviewCell,
                   indexPath.item < currentFonts.count else { continue }
-            let record = currentFonts[indexPath.item]
-            let variations = currentFonts.count == 1 ? currentVariationValues : nil
-            item.delegate = self
-            item.configure(
-                record: record,
-                sampleText: currentSampleText,
-                fontSize: currentFontSize,
-                lineSpacing: currentLineSpacing,
-                variationValues: variations,
-                isEditable: isSampleEditable
-            )
+            configure(item, at: indexPath)
         }
 
-        collectionView.collectionViewLayout?.invalidateLayout()
+        if invalidateLayout {
+            collectionView.collectionViewLayout?.invalidateLayout()
+        }
 
         guard !visibleIndexPaths.isEmpty else { return }
         collectionView.reloadItems(at: Set(visibleIndexPaths))
+    }
+
+    private func configure(_ item: FontPreviewCell, at indexPath: IndexPath) {
+        item.delegate = self
+
+        guard indexPath.item < currentFonts.count else { return }
+
+        let record = currentFonts[indexPath.item]
+        let variations = currentFonts.count == 1 ? currentVariationValues : nil
+        item.configure(
+            record: record,
+            sampleText: currentSampleText,
+            fontSize: currentFontSize,
+            textStyle: currentTextStyle,
+            variationValues: variations,
+            isEditable: isSampleEditable
+        )
     }
 
     func fontPreviewCell(_ cell: FontPreviewCell, didChangeSampleText text: String) {

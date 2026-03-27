@@ -13,6 +13,8 @@ class FontDetailViewController: NSViewController {
     // MARK: - Child VC
 
     private let previewController = FontPreviewController()
+    private let previewTextStylePopover = NSPopover()
+    private let previewTextStylePopoverViewController = PreviewTextStylePopoverViewController()
 
     // MARK: - Empty State
 
@@ -36,17 +38,6 @@ class FontDetailViewController: NSViewController {
     private let regionSpacing: CGFloat = 8
     private let previewMinHeight: CGFloat = 120
 
-    // MARK: - Controls Bar
-
-    private let controlsBar: NSStackView = {
-        let stack = NSStackView()
-        stack.orientation = .horizontal
-        stack.alignment = .centerY
-        stack.spacing = 8
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        return stack
-    }()
-
     private let scriptPopUp: NSPopUpButton = {
         let button = NSPopUpButton(frame: .zero, pullsDown: false)
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -58,29 +49,12 @@ class FontDetailViewController: NSViewController {
     }()
 
     private let fontSizeToolbarControl = FontSizeToolbarControl()
-
-    private let lineSpacingStepper: NSStepper = {
-        let stepper = NSStepper()
-        stepper.minValue = 1.0
-        stepper.maxValue = 3.0
-        stepper.increment = 0.1
-        stepper.doubleValue = 1.2
-        stepper.translatesAutoresizingMaskIntoConstraints = false
-        return stepper
-    }()
-
-    private let lineSpacingLabel: NSTextField = {
-        let label = NSTextField(labelWithString: "1.2x")
-        label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-        label.textColor = .secondaryLabelColor
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.widthAnchor.constraint(equalToConstant: 32).isActive = true
-        return label
-    }()
+    private let previewTextStyleToolbarButton = PreviewTextStyleToolbarButton()
 
     // MARK: - State
 
     private var currentFonts: [FontRecord] = []
+    private var currentPreviewTextStyle = FontPreviewTextStyle.default
 
     // MARK: - Lifecycle
 
@@ -101,26 +75,14 @@ class FontDetailViewController: NSViewController {
             contentContainer.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
-        setupControlsBar()
         setupPreviewController()
+        setupPreviewTextStylePopover()
         setupActions()
 
         showEmpty()
     }
 
     // MARK: - Setup
-
-    private func setupControlsBar() {
-        contentContainer.addSubview(controlsBar)
-        controlsBar.addArrangedSubview(lineSpacingStepper)
-        controlsBar.addArrangedSubview(lineSpacingLabel)
-
-        NSLayoutConstraint.activate([
-            controlsBar.topAnchor.constraint(equalTo: contentContainer.safeAreaLayoutGuide.topAnchor, constant: regionSpacing),
-            controlsBar.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor, constant: 12),
-            controlsBar.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor, constant: -12),
-        ])
-    }
 
     private func setupPreviewController() {
         addChild(previewController)
@@ -129,12 +91,19 @@ class FontDetailViewController: NSViewController {
         contentContainer.addSubview(previewView)
 
         NSLayoutConstraint.activate([
-            previewView.topAnchor.constraint(equalTo: controlsBar.bottomAnchor, constant: regionSpacing),
+            previewView.topAnchor.constraint(equalTo: contentContainer.safeAreaLayoutGuide.topAnchor, constant: regionSpacing),
             previewView.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor),
             previewView.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor),
             previewView.bottomAnchor.constraint(equalTo: contentContainer.bottomAnchor),
             previewView.heightAnchor.constraint(greaterThanOrEqualToConstant: previewMinHeight),
         ])
+    }
+
+    private func setupPreviewTextStylePopover() {
+        previewTextStylePopover.behavior = .transient
+        previewTextStylePopover.animates = true
+        previewTextStylePopover.contentViewController = previewTextStylePopoverViewController
+        previewTextStylePopoverViewController.apply(style: currentPreviewTextStyle)
     }
 
     private func setupActions() {
@@ -145,10 +114,16 @@ class FontDetailViewController: NSViewController {
             self?.previewController.setFontSize(fontSize)
         }
 
-        previewController.setFontSize(fontSizeToolbarControl.fontSize)
+        previewTextStyleToolbarButton.onPress = { [weak self] button in
+            self?.togglePreviewTextStylePopover(relativeTo: button)
+        }
 
-        lineSpacingStepper.target = self
-        lineSpacingStepper.action = #selector(lineSpacingChanged(_:))
+        previewTextStylePopoverViewController.onStyleChanged = { [weak self] style in
+            self?.applyPreviewTextStyle(style)
+        }
+
+        previewController.setFontSize(fontSizeToolbarControl.fontSize)
+        previewController.setTextStyle(currentPreviewTextStyle)
     }
 
     // MARK: - Public
@@ -162,6 +137,17 @@ class FontDetailViewController: NSViewController {
         item.paletteLabel = "Preview Size"
         item.toolTip = "Adjust preview size"
         item.view = fontSizeToolbarControl
+        return item
+    }
+
+    func makePreviewTextStyleToolbarItem(itemIdentifier: NSToolbarItem.Identifier) -> NSToolbarItem {
+        _ = view
+
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        item.label = "Text Style"
+        item.paletteLabel = "Text Style"
+        item.toolTip = "Adjust preview text style"
+        item.view = previewTextStyleToolbarButton
         return item
     }
 
@@ -204,29 +190,47 @@ class FontDetailViewController: NSViewController {
         previewController.setSampleText(sample.sampleText)
     }
 
-    @objc private func lineSpacingChanged(_ sender: NSStepper) {
-        let spacing = sender.doubleValue
-        lineSpacingLabel.stringValue = String(format: "%.1fx", spacing)
-        previewController.setLineSpacing(CGFloat(spacing))
-    }
-
     // MARK: - Private
 
     private func showEmpty() {
         emptyLabel.isHidden = false
         contentContainer.isHidden = true
-        updateFontSizeControlAvailability()
+        updatePreviewControlAvailability()
     }
 
     private func showContent(_ fonts: [FontRecord]) {
         emptyLabel.isHidden = true
         contentContainer.isHidden = false
-        updateFontSizeControlAvailability()
+        updatePreviewControlAvailability()
         previewController.configure(fonts: fonts)
     }
 
-    private func updateFontSizeControlAvailability() {
+    private func updatePreviewControlAvailability() {
         let isEnabled = !currentFonts.isEmpty
         fontSizeToolbarControl.isEnabled = isEnabled
+        previewTextStyleToolbarButton.isEnabled = isEnabled
+
+        if !isEnabled {
+            previewTextStylePopover.performClose(nil)
+        }
+    }
+
+    private func togglePreviewTextStylePopover(relativeTo anchorView: NSView) {
+        guard !currentFonts.isEmpty else { return }
+
+        if previewTextStylePopover.isShown {
+            previewTextStylePopover.performClose(nil)
+            return
+        }
+
+        previewTextStylePopoverViewController.apply(style: currentPreviewTextStyle)
+        previewTextStylePopover.show(relativeTo: anchorView.bounds, of: anchorView, preferredEdge: .minY)
+    }
+
+    private func applyPreviewTextStyle(_ style: FontPreviewTextStyle) {
+        guard style != currentPreviewTextStyle else { return }
+
+        currentPreviewTextStyle = style
+        previewController.setTextStyle(style)
     }
 }

@@ -1,0 +1,61 @@
+//
+//  FontPreviewTextStyle.swift
+//  FontFlow
+//
+//  Created on 2026/3/27.
+//
+
+import Cocoa
+
+struct FontPreviewTextStyle: Equatable {
+
+    static let minimumLineSpacingMultiplier: CGFloat = 1.0
+    static let maximumLineSpacingMultiplier: CGFloat = 3.0
+    static let defaultLineSpacingMultiplier: CGFloat = 1.2
+
+    static let `default` = FontPreviewTextStyle()
+
+    var lineSpacingMultiplier: CGFloat
+    var foregroundColor: NSColor?
+    var backgroundColor: NSColor?
+
+    init(
+        lineSpacingMultiplier: CGFloat = FontPreviewTextStyle.defaultLineSpacingMultiplier,
+        foregroundColor: NSColor? = nil,
+        backgroundColor: NSColor? = nil
+    ) {
+        self.lineSpacingMultiplier = Self.normalizedLineSpacingMultiplier(lineSpacingMultiplier)
+        self.foregroundColor = foregroundColor
+        self.backgroundColor = backgroundColor
+    }
+
+    var resolvedForegroundColor: NSColor {
+        foregroundColor ?? .labelColor
+    }
+
+    var resolvedBackgroundColor: NSColor {
+        backgroundColor ?? .clear
+    }
+
+    static func normalizedLineSpacingMultiplier(_ value: CGFloat) -> CGFloat {
+        let clampedValue = min(max(value, minimumLineSpacingMultiplier), maximumLineSpacingMultiplier)
+        return (clampedValue * 10).rounded() / 10
+    }
+
+    static func == (lhs: FontPreviewTextStyle, rhs: FontPreviewTextStyle) -> Bool {
+        lhs.lineSpacingMultiplier == rhs.lineSpacingMultiplier
+            && colorsEqual(lhs.foregroundColor, rhs.foregroundColor)
+            && colorsEqual(lhs.backgroundColor, rhs.backgroundColor)
+    }
+
+    private static func colorsEqual(_ lhs: NSColor?, _ rhs: NSColor?) -> Bool {
+        switch (lhs, rhs) {
+        case (nil, nil):
+            return true
+        case let (lhsColor?, rhsColor?):
+            return lhsColor.isEqual(rhsColor)
+        default:
+            return false
+        }
+    }
+}
