@@ -64,6 +64,7 @@ class FontBrowserViewController: NSViewController {
 
     private enum LayoutMetrics {
         static let headerContentHeight: CGFloat = 44
+        static let headerHorizontalInset: CGFloat = 12
     }
 
     weak var delegate: FontBrowserSelectionDelegate?
@@ -99,6 +100,8 @@ class FontBrowserViewController: NSViewController {
         return box
     }()
 
+    private let browserCountView = FontBrowserCountView()
+
     // MARK: - Lifecycle
 
     override func loadView() {
@@ -112,6 +115,7 @@ class FontBrowserViewController: NSViewController {
         view.addSubview(childHostingView)
         view.addSubview(headerView)
         view.addSubview(separatorView)
+        headerView.addSubview(browserCountView)
 
         NSLayoutConstraint.activate([
             childHostingView.topAnchor.constraint(equalTo: view.topAnchor),
@@ -122,11 +126,16 @@ class FontBrowserViewController: NSViewController {
             headerView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             headerView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: LayoutMetrics.headerContentHeight),
+            browserCountView.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: LayoutMetrics.headerHorizontalInset),
+            browserCountView.trailingAnchor.constraint(lessThanOrEqualTo: headerView.trailingAnchor, constant: -LayoutMetrics.headerHorizontalInset),
+            browserCountView.centerYAnchor.constraint(equalTo: headerView.bottomAnchor, constant: -(LayoutMetrics.headerContentHeight / 2)),
             separatorView.bottomAnchor.constraint(equalTo: headerView.bottomAnchor),
             separatorView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             separatorView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             separatorView.heightAnchor.constraint(equalToConstant: 1)
         ])
+
+        browserCountView.update(familyCount: 0, typefaceCount: 0)
 
         wireChild(gridViewController)
         wireChild(listViewController)
@@ -176,6 +185,7 @@ class FontBrowserViewController: NSViewController {
         ]
         let records = (try? managedObjectContext.fetch(request)) ?? []
         familyNodes = buildFamilyNodes(from: records)
+        browserCountView.update(familyCount: familyNodes.count, typefaceCount: records.count)
 
         fontsByObjectID = [:]
         for record in records {
