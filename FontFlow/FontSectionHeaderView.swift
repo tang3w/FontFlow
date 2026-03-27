@@ -103,7 +103,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
     func configure(familyName: String, count: Int, isCollapsed: Bool, onToggle: @escaping () -> Void) {
         nameLabel.stringValue = familyName
-        countLabel.stringValue = "\(count) styles"
+        countLabel.stringValue = "\(count) " + (count == 1 ? "typeface" : "typefaces")
         self.onToggle = onToggle
         updateChevron(collapsed: isCollapsed)
     }
