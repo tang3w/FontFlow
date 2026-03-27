@@ -112,13 +112,6 @@ class FontDetailViewController: NSViewController {
 
     private func setupControlsBar() {
         contentContainer.addSubview(controlsBar)
-
-        let spacer = NSView()
-        spacer.translatesAutoresizingMaskIntoConstraints = false
-        spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-
-        controlsBar.addArrangedSubview(scriptPopUp)
-        controlsBar.addArrangedSubview(spacer)
         controlsBar.addArrangedSubview(lineSpacingStepper)
         controlsBar.addArrangedSubview(lineSpacingLabel)
 
@@ -169,6 +162,18 @@ class FontDetailViewController: NSViewController {
         item.paletteLabel = "Preview Size"
         item.toolTip = "Adjust preview size"
         item.view = fontSizeToolbarControl
+        return item
+    }
+
+    func makeScriptToolbarItem(itemIdentifier: NSToolbarItem.Identifier) -> NSToolbarItem {
+        // Force loadView() so toolbar control wiring is in place before attaching it.
+        _ = view
+
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+        item.label = "Script"
+        item.paletteLabel = "Script"
+        item.toolTip = "Choose preview script sample"
+        item.view = scriptPopUp
         return item
     }
 
