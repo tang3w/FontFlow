@@ -11,6 +11,12 @@ protocol FontSizeToolbarControlDelegate: AnyObject {
     func fontSizeToolbarControl(_ control: FontSizeToolbarControl, didChangeFontSize fontSize: CGFloat)
 }
 
+// When the toolbar groups the font-size and text-style items together,
+// NSSlider applies its internal bar insets asymmetrically: the leading
+// side gets the normal inset while the trailing side collapses to zero.
+// ZeroInsetSliderCell removes the built-in bar/knob insets entirely so
+// the track spans the full slider width; the surrounding stackSpacing
+// then controls the visual gap between the slider and its neighbors.
 private final class ZeroInsetSliderCell: NSSliderCell {
 
     override func barRect(flipped: Bool) -> NSRect {
