@@ -11,14 +11,36 @@ protocol FontSizeToolbarControlDelegate: AnyObject {
     func fontSizeToolbarControl(_ control: FontSizeToolbarControl, didChangeFontSize fontSize: CGFloat)
 }
 
+private final class ZeroInsetSliderCell: NSSliderCell {
+
+    override func barRect(flipped: Bool) -> NSRect {
+        var rect = super.barRect(flipped: flipped)
+        rect.origin.x = 0
+        rect.size.width = controlView?.bounds.width ?? rect.size.width
+        return rect
+    }
+
+    override func knobRect(flipped: Bool) -> NSRect {
+        let bar = barRect(flipped: flipped)
+        let superKnob = super.knobRect(flipped: flipped)
+        let knobWidth = superKnob.size.width
+
+        let proportion = (doubleValue - minValue) / (maxValue - minValue)
+        let usableWidth = bar.size.width - knobWidth
+        let knobX = bar.origin.x + CGFloat(proportion) * usableWidth
+
+        return NSRect(x: knobX, y: superKnob.origin.y, width: knobWidth, height: superKnob.size.height)
+    }
+}
+
 final class FontSizeToolbarControl: NSView {
 
     private enum LayoutMetrics {
         static let defaultFontSize: Double = 48
         static let minimumFontSize: Double = 8
         static let maximumFontSize: Double = 200
-        static let sliderWidth: CGFloat = 140
-        static let stackSpacing: CGFloat = 0
+        static let sliderWidth: CGFloat = 100
+        static let stackSpacing: CGFloat = 10
         static let horizontalInset: CGFloat = 10
         static let verticalInset: CGFloat = 3
         static let smallGlyphFontSize: CGFloat = 11
@@ -70,6 +92,13 @@ final class FontSizeToolbarControl: NSView {
             action: nil
         )
         slider.controlSize = .small
+        let cell = ZeroInsetSliderCell()
+        cell.controlSize = .small
+        cell.minValue = LayoutMetrics.minimumFontSize
+        cell.maxValue = LayoutMetrics.maximumFontSize
+        cell.doubleValue = LayoutMetrics.defaultFontSize
+        cell.isContinuous = true
+        slider.cell = cell
         slider.translatesAutoresizingMaskIntoConstraints = false
         slider.widthAnchor.constraint(equalToConstant: LayoutMetrics.sliderWidth).isActive = true
         return slider
