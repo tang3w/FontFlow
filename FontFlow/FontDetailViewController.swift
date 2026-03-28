@@ -91,7 +91,7 @@ class FontDetailViewController: NSViewController {
         contentContainer.addSubview(previewView)
 
         NSLayoutConstraint.activate([
-            previewView.topAnchor.constraint(equalTo: contentContainer.safeAreaLayoutGuide.topAnchor, constant: regionSpacing),
+            previewView.topAnchor.constraint(equalTo: contentContainer.topAnchor),
             previewView.leadingAnchor.constraint(equalTo: contentContainer.leadingAnchor),
             previewView.trailingAnchor.constraint(equalTo: contentContainer.trailingAnchor),
             previewView.bottomAnchor.constraint(equalTo: contentContainer.bottomAnchor),
