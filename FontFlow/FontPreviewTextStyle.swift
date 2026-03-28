@@ -11,7 +11,7 @@ struct FontPreviewTextStyle: Equatable {
 
     static let minimumFontSize: CGFloat = 8
     static let maximumFontSize: CGFloat = 200
-    static let defaultFontSize: CGFloat = 48
+    static let defaultFontSize: CGFloat = 36
     static let minimumLineSpacingMultiplier: CGFloat = 1.0
     static let maximumLineSpacingMultiplier: CGFloat = 2.0
     static let defaultLineSpacingMultiplier: CGFloat = 1.0
