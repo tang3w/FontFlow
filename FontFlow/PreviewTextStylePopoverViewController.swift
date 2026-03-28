@@ -13,9 +13,7 @@ final class PreviewTextStylePopoverViewController: NSViewController {
         static let contentInset: CGFloat = 16
         static let rowSpacing: CGFloat = 12
         static let columnSpacing: CGFloat = 16
-        static let labelWidth: CGFloat = 92
         static let sliderWidth: CGFloat = 100
-        static let valueLabelWidth: CGFloat = 40
     }
 
     var onStyleChanged: ((FontPreviewTextStyle) -> Void)?
@@ -31,19 +29,18 @@ final class PreviewTextStylePopoverViewController: NSViewController {
             action: nil
         )
         slider.isContinuous = true
-        slider.controlSize = .small
+        slider.controlSize = .large
         slider.translatesAutoresizingMaskIntoConstraints = false
         slider.widthAnchor.constraint(equalToConstant: LayoutMetrics.sliderWidth).isActive = true
         return slider
     }()
 
     private let lineSpacingValueLabel: NSTextField = {
-        let label = NSTextField(labelWithString: "1.2x")
-        label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
+        let label = NSTextField(labelWithString: "1.0x")
+        label.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
         label.alignment = .right
         label.textColor = .secondaryLabelColor
         label.translatesAutoresizingMaskIntoConstraints = false
-        label.widthAnchor.constraint(equalToConstant: LayoutMetrics.valueLabelWidth).isActive = true
         return label
     }()
 
@@ -54,8 +51,8 @@ final class PreviewTextStylePopoverViewController: NSViewController {
         return colorWell
     }()
 
-    private let foregroundDefaultButton: NSButton = {
-        let button = NSButton(title: "Default", target: nil, action: nil)
+    private let foregroundResetButton: NSButton = {
+        let button = NSButton(title: "Reset", target: nil, action: nil)
         button.controlSize = .small
         button.bezelStyle = .rounded
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -69,8 +66,8 @@ final class PreviewTextStylePopoverViewController: NSViewController {
         return colorWell
     }()
 
-    private let backgroundClearButton: NSButton = {
-        let button = NSButton(title: "Clear", target: nil, action: nil)
+    private let backgroundResetButton: NSButton = {
+        let button = NSButton(title: "Reset", target: nil, action: nil)
         button.controlSize = .small
         button.bezelStyle = .rounded
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -94,11 +91,11 @@ final class PreviewTextStylePopoverViewController: NSViewController {
 
         let foregroundControls = makeHorizontalStackView()
         foregroundControls.addArrangedSubview(foregroundColorWell)
-        foregroundControls.addArrangedSubview(foregroundDefaultButton)
+        foregroundControls.addArrangedSubview(foregroundResetButton)
 
         let backgroundControls = makeHorizontalStackView()
         backgroundControls.addArrangedSubview(backgroundColorWell)
-        backgroundControls.addArrangedSubview(backgroundClearButton)
+        backgroundControls.addArrangedSubview(backgroundResetButton)
 
         let gridView = NSGridView(views: [
             [makeSettingLabel("Line Spacing"), lineSpacingControls],
@@ -108,9 +105,12 @@ final class PreviewTextStylePopoverViewController: NSViewController {
         gridView.rowSpacing = LayoutMetrics.rowSpacing
         gridView.columnSpacing = LayoutMetrics.columnSpacing
         gridView.translatesAutoresizingMaskIntoConstraints = false
-        gridView.column(at: 0).width = LayoutMetrics.labelWidth
-        gridView.column(at: 0).xPlacement = .leading
-        gridView.column(at: 1).xPlacement = .fill
+        gridView.column(at: 0).xPlacement = .trailing
+        gridView.column(at: 1).xPlacement = .leading
+
+        for rowIndex in 0..<gridView.numberOfRows {
+            gridView.row(at: rowIndex).yPlacement = .center
+        }
 
         view.addSubview(gridView)
         view.addSubview(resetButton)
@@ -172,14 +172,14 @@ final class PreviewTextStylePopoverViewController: NSViewController {
         foregroundColorWell.target = self
         foregroundColorWell.action = #selector(foregroundColorChanged(_:))
 
-        foregroundDefaultButton.target = self
-        foregroundDefaultButton.action = #selector(resetForegroundColor(_:))
+        foregroundResetButton.target = self
+        foregroundResetButton.action = #selector(resetForegroundColor(_:))
 
         backgroundColorWell.target = self
         backgroundColorWell.action = #selector(backgroundColorChanged(_:))
 
-        backgroundClearButton.target = self
-        backgroundClearButton.action = #selector(clearBackgroundColor(_:))
+        backgroundResetButton.target = self
+        backgroundResetButton.action = #selector(resetBackgroundColor(_:))
 
         resetButton.target = self
         resetButton.action = #selector(resetAll(_:))
@@ -195,8 +195,8 @@ final class PreviewTextStylePopoverViewController: NSViewController {
         foregroundColorWell.color = currentStyle.resolvedForegroundColor
         backgroundColorWell.color = currentStyle.resolvedBackgroundColor
 
-        foregroundDefaultButton.isEnabled = currentStyle.foregroundColor != nil
-        backgroundClearButton.isEnabled = currentStyle.backgroundColor != nil
+        foregroundResetButton.isEnabled = currentStyle.foregroundColor != nil
+        backgroundResetButton.isEnabled = currentStyle.backgroundColor != nil
         resetButton.isEnabled = currentStyle != popoverResetStyle(for: currentStyle)
     }
 
@@ -246,7 +246,7 @@ final class PreviewTextStylePopoverViewController: NSViewController {
         }
     }
 
-    @objc private func clearBackgroundColor(_ sender: NSButton) {
+    @objc private func resetBackgroundColor(_ sender: NSButton) {
         commitStyleChange { style in
             style.backgroundColor = nil
         }
