@@ -18,6 +18,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let context = persistentContainer.viewContext
         let splitVC = MainSplitViewController(managedObjectContext: context)
 
+        // Keep the standard titlebar safe area so browser content can rely on
+        // AppKit's top inset without needing extra safe-area rect adjustments.
         window.styleMask.insert(.fullSizeContentView)
         window.titleVisibility = .hidden
         window.contentViewController = splitVC
