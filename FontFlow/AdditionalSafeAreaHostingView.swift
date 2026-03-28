@@ -19,6 +19,9 @@ final class AdditionalSafeAreaHostingView: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    // Override only `safeAreaInsets` here. Once the window uses the standard
+    // titlebar safe area, shrinking `safeAreaRect` as well can double-count the
+    // top exclusion and push scroll/collection content downward.
     override var safeAreaInsets: NSEdgeInsets {
         let insets = super.safeAreaInsets
         return NSEdgeInsets(
@@ -26,16 +29,6 @@ final class AdditionalSafeAreaHostingView: NSView {
             left: insets.left + additionalInsets.left,
             bottom: insets.bottom + additionalInsets.bottom,
             right: insets.right + additionalInsets.right
-        )
-    }
-
-    override var safeAreaRect: NSRect {
-        let rect = super.safeAreaRect
-        return NSRect(
-            x: rect.minX + additionalInsets.left,
-            y: rect.minY + additionalInsets.bottom,
-            width: max(0, rect.width - additionalInsets.left - additionalInsets.right),
-            height: max(0, rect.height - additionalInsets.top - additionalInsets.bottom)
         )
     }
 }

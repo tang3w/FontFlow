@@ -20,7 +20,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         window.styleMask.insert(.fullSizeContentView)
         window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
         window.contentViewController = splitVC
         window.title = "FontFlow"
         window.setContentSize(NSSize(width: 1100, height: 700))
