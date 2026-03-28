@@ -57,6 +57,7 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         view.wantsLayer = true
         view.translatesAutoresizingMaskIntoConstraints = false
         view.layer?.cornerRadius = 10
+        view.layer?.cornerCurve = .continuous
         view.layer?.masksToBounds = true
         return view
     }()
