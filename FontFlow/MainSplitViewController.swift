@@ -295,6 +295,9 @@ extension MainSplitViewController: NSToolbarDelegate {
             .previewScript,
             .flexibleSpace,
             .previewFontSize,
+            // Keep a fixed gap so the text-style button does not squeeze the slider in `previewFontSize` item.
+            // We should revisit this in the future see if we can remove this spacer.
+            .space,
             .previewTextStyle,
             .flexibleSpace,
             .importFonts,
