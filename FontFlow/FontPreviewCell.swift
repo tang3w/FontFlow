@@ -20,7 +20,7 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
     weak var delegate: FontPreviewCellDelegate?
 
     private var currentSampleText = ""
-    private var currentSampleFont: NSFont = .systemFont(ofSize: 48)
+    private var currentSampleFont: NSFont = .systemFont(ofSize: FontPreviewTextStyle.defaultFontSize)
     private var currentTextStyle = FontPreviewTextStyle.default
     private var isSampleEditable = false
 
@@ -38,7 +38,7 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
 
     private let sampleLabel: NSTextField = {
         let label = NSTextField(wrappingLabelWithString: "")
-        label.font = .systemFont(ofSize: 48)
+        label.font = .systemFont(ofSize: FontPreviewTextStyle.defaultFontSize)
         label.isEditable = false
         label.isSelectable = false
         label.isBordered = false
@@ -89,24 +89,23 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         ])
     }
 
-    func configure(record: FontRecord, sampleText: String, fontSize: CGFloat, textStyle: FontPreviewTextStyle, variationValues: [UInt32: Double]? = nil) {
+    func configure(record: FontRecord, sampleText: String, textStyle: FontPreviewTextStyle, variationValues: [UInt32: Double]? = nil) {
         configure(
             record: record,
             sampleText: sampleText,
-            fontSize: fontSize,
             textStyle: textStyle,
             variationValues: variationValues,
             isEditable: false
         )
     }
 
-    func configure(record: FontRecord, sampleText: String, fontSize: CGFloat, textStyle: FontPreviewTextStyle, variationValues: [UInt32: Double]? = nil, isEditable: Bool) {
+    func configure(record: FontRecord, sampleText: String, textStyle: FontPreviewTextStyle, variationValues: [UInt32: Double]? = nil, isEditable: Bool) {
         let displayName = record.displayName ?? record.postScriptName ?? "Unknown"
         fontNameLabel.stringValue = displayName
 
         currentSampleText = sampleText
-        currentSampleFont = loadFont(for: record, size: fontSize, variationValues: variationValues)
         currentTextStyle = textStyle
+        currentSampleFont = loadFont(for: record, size: textStyle.fontSize, variationValues: variationValues)
         isSampleEditable = isEditable
 
         renderSampleText()
@@ -117,9 +116,9 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         delegate = nil
         fontNameLabel.stringValue = ""
         sampleLabel.stringValue = ""
-        sampleLabel.font = .systemFont(ofSize: 48)
+        sampleLabel.font = .systemFont(ofSize: FontPreviewTextStyle.defaultFontSize)
         currentSampleText = ""
-        currentSampleFont = .systemFont(ofSize: 48)
+        currentSampleFont = .systemFont(ofSize: FontPreviewTextStyle.defaultFontSize)
         currentTextStyle = .default
         isSampleEditable = false
         sampleLabel.delegate = nil
@@ -154,7 +153,7 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         sampleLabel.font = currentSampleFont
         sampleLabel.textColor = currentTextStyle.resolvedForegroundColor
         sampleLabel.stringValue = currentSampleText
-        sampleBackgroundView.layer?.backgroundColor = currentTextStyle.backgroundColor?.cgColor
+        sampleBackgroundView.layer?.backgroundColor = currentTextStyle.resolvedBackgroundColor.cgColor
 
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineSpacing = (currentTextStyle.lineSpacingMultiplier - 1.0) * currentSampleFont.pointSize

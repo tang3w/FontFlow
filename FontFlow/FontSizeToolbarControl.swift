@@ -42,9 +42,9 @@ private final class ZeroInsetSliderCell: NSSliderCell {
 final class FontSizeToolbarControl: NSView {
 
     private enum LayoutMetrics {
-        static let defaultFontSize: Double = 48
-        static let minimumFontSize: Double = 8
-        static let maximumFontSize: Double = 200
+        static let defaultFontSize = Double(FontPreviewTextStyle.defaultFontSize)
+        static let minimumFontSize = Double(FontPreviewTextStyle.minimumFontSize)
+        static let maximumFontSize = Double(FontPreviewTextStyle.maximumFontSize)
         static let sliderWidth: CGFloat = 100
         static let stackSpacing: CGFloat = 10
         static let horizontalInset: CGFloat = 10
@@ -190,7 +190,7 @@ final class FontSizeToolbarControl: NSView {
     }
 
     private func normalizedFontSize(from value: Double) -> CGFloat {
-        CGFloat(value).rounded()
+        FontPreviewTextStyle.normalizedFontSize(CGFloat(value))
     }
 
     private func updateEnabledState() {

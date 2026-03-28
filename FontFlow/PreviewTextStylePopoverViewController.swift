@@ -197,7 +197,11 @@ final class PreviewTextStylePopoverViewController: NSViewController {
 
         foregroundDefaultButton.isEnabled = currentStyle.foregroundColor != nil
         backgroundClearButton.isEnabled = currentStyle.backgroundColor != nil
-        resetButton.isEnabled = currentStyle != .default
+        resetButton.isEnabled = currentStyle != popoverResetStyle(for: currentStyle)
+    }
+
+    private func popoverResetStyle(for style: FontPreviewTextStyle) -> FontPreviewTextStyle {
+        FontPreviewTextStyle(fontSize: style.fontSize)
     }
 
     private func commitStyleChange(_ mutations: (inout FontPreviewTextStyle) -> Void) {
@@ -249,7 +253,7 @@ final class PreviewTextStylePopoverViewController: NSViewController {
     }
 
     @objc private func resetAll(_ sender: NSButton) {
-        let nextStyle = FontPreviewTextStyle.default
+        let nextStyle = popoverResetStyle(for: currentStyle)
         guard nextStyle != currentStyle else { return }
 
         currentStyle = nextStyle

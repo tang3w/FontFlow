@@ -111,7 +111,7 @@ class FontDetailViewController: NSViewController {
         scriptPopUp.action = #selector(scriptChanged(_:))
 
         fontSizeToolbarControl.onFontSizeChanged = { [weak self] fontSize in
-            self?.previewController.setFontSize(fontSize)
+            self?.applyPreviewFontSize(fontSize)
         }
 
         previewTextStyleToolbarButton.onPress = { [weak self] button in
@@ -122,7 +122,8 @@ class FontDetailViewController: NSViewController {
             self?.applyPreviewTextStyle(style)
         }
 
-        previewController.setFontSize(fontSizeToolbarControl.fontSize)
+        currentPreviewTextStyle.fontSize = FontPreviewTextStyle.normalizedFontSize(fontSizeToolbarControl.fontSize)
+        previewTextStylePopoverViewController.apply(style: currentPreviewTextStyle)
         previewController.setTextStyle(currentPreviewTextStyle)
     }
 
@@ -232,5 +233,14 @@ class FontDetailViewController: NSViewController {
 
         currentPreviewTextStyle = style
         previewController.setTextStyle(style)
+    }
+
+    private func applyPreviewFontSize(_ size: CGFloat) {
+        let normalizedSize = FontPreviewTextStyle.normalizedFontSize(size)
+        guard normalizedSize != currentPreviewTextStyle.fontSize else { return }
+
+        currentPreviewTextStyle.fontSize = normalizedSize
+        previewTextStylePopoverViewController.apply(style: currentPreviewTextStyle)
+        previewController.setTextStyle(currentPreviewTextStyle)
     }
 }

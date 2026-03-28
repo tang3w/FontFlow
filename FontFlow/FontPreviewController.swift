@@ -16,7 +16,6 @@ class FontPreviewController: NSViewController, FontPreviewCellDelegate {
 
     private(set) var currentFonts: [FontRecord] = []
     private var currentSampleText: String = ScriptSamples.default.sampleText
-    private var currentFontSize: CGFloat = 48
     private var currentTextStyle = FontPreviewTextStyle.default
     private var currentVariationValues: [UInt32: Double] = [:]
     private var isSampleEditable = false
@@ -62,8 +61,9 @@ class FontPreviewController: NSViewController, FontPreviewCellDelegate {
     }
 
     func setFontSize(_ size: CGFloat) {
-        currentFontSize = size
-        refreshVisibleCellsAndLayout()
+        var nextStyle = currentTextStyle
+        nextStyle.fontSize = FontPreviewTextStyle.normalizedFontSize(size)
+        setTextStyle(nextStyle)
     }
 
     func setLineSpacing(_ spacing: CGFloat) {
@@ -73,7 +73,8 @@ class FontPreviewController: NSViewController, FontPreviewCellDelegate {
     }
 
     func setTextStyle(_ style: FontPreviewTextStyle) {
-        let shouldInvalidateLayout = style.lineSpacingMultiplier != currentTextStyle.lineSpacingMultiplier
+        let shouldInvalidateLayout = style.fontSize != currentTextStyle.fontSize
+            || style.lineSpacingMultiplier != currentTextStyle.lineSpacingMultiplier
         currentTextStyle = style
         refreshVisibleCellsAndLayout(invalidateLayout: shouldInvalidateLayout)
     }
@@ -138,7 +139,6 @@ class FontPreviewController: NSViewController, FontPreviewCellDelegate {
         item.configure(
             record: record,
             sampleText: currentSampleText,
-            fontSize: currentFontSize,
             textStyle: currentTextStyle,
             variationValues: variations,
             isEditable: isSampleEditable
