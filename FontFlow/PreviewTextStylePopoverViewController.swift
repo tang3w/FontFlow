@@ -10,12 +10,11 @@ import Cocoa
 final class PreviewTextStylePopoverViewController: NSViewController {
 
     private enum LayoutMetrics {
-        static let preferredWidth: CGFloat = 320
         static let contentInset: CGFloat = 16
         static let rowSpacing: CGFloat = 12
         static let columnSpacing: CGFloat = 16
         static let labelWidth: CGFloat = 92
-        static let sliderWidth: CGFloat = 148
+        static let sliderWidth: CGFloat = 100
         static let valueLabelWidth: CGFloat = 40
     }
 
@@ -128,13 +127,15 @@ final class PreviewTextStylePopoverViewController: NSViewController {
 
         setupActions()
         updateControls()
+    }
 
-        view.layoutSubtreeIfNeeded()
+    override func viewDidLayout() {
+        super.viewDidLayout()
+
         let fittingSize = view.fittingSize
-        preferredContentSize = NSSize(
-            width: max(LayoutMetrics.preferredWidth, fittingSize.width),
-            height: fittingSize.height
-        )
+        if preferredContentSize != fittingSize {
+            preferredContentSize = fittingSize
+        }
     }
 
     func apply(style: FontPreviewTextStyle) {
