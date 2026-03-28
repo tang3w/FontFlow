@@ -10,8 +10,8 @@ import Cocoa
 struct FontPreviewTextStyle: Equatable {
 
     static let minimumLineSpacingMultiplier: CGFloat = 1.0
-    static let maximumLineSpacingMultiplier: CGFloat = 3.0
-    static let defaultLineSpacingMultiplier: CGFloat = 1.2
+    static let maximumLineSpacingMultiplier: CGFloat = 2.0
+    static let defaultLineSpacingMultiplier: CGFloat = 1.0
 
     static let `default` = FontPreviewTextStyle()
 
