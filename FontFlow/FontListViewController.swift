@@ -10,6 +10,20 @@ import CoreData
 
 // MARK: - FontListViewController
 
+private final class FontListOutlineView: NSOutlineView {
+
+    override func validateProposedFirstResponder(_ responder: NSResponder, for event: NSEvent?) -> Bool {
+        // NSOutlineView consults this hook during hit-testing. Allow the custom
+        // section cell view to become first responder so it can receive clicks
+        // for expand/collapse instead of the outline view consuming the event.
+        if responder is FontListSectionCellView {
+            return true
+        }
+
+        return super.validateProposedFirstResponder(responder, for: event)
+    }
+}
+
 class FontListViewController: NSViewController, FontBrowserChildViewControlling {
 
     private enum LayoutMetrics {
@@ -37,7 +51,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
 
-        outlineView = NSOutlineView()
+        outlineView = FontListOutlineView()
         outlineView.headerView = nil
         outlineView.style = .fullWidth
         outlineView.rowSizeStyle = .default
