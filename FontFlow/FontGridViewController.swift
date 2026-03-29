@@ -36,7 +36,15 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     private var collapsedSections: Set<String> = []
     private var currentColumnCount = 0
     private var lastLayoutWidth: CGFloat = 0
+    /// True while a diffable data source apply is in flight, used to suppress
+    /// delegate-driven selection notifications that would otherwise feed stale
+    /// state back to the parent controller.
     private var isApplyingReload = false
+    /// Monotonically increasing counter that lets the `apply` completion handler
+    /// detect whether a newer reload has been issued. If the completion fires
+    /// for a stale generation it is discarded, preventing it from restoring
+    /// outdated selection or prematurely clearing `isApplyingReload`.
+    private var reloadGeneration = 0
 
     // MARK: - Lifecycle
 
@@ -105,9 +113,11 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
             snapshot.reloadSections(sectionsToReload)
         }
 
+        reloadGeneration += 1
+        let generation = reloadGeneration
         isApplyingReload = true
         dataSource.apply(snapshot, animatingDifferences: animatingDifferences) { [weak self] in
-            guard let self = self else { return }
+            guard let self = self, self.reloadGeneration == generation else { return }
             self.restoreSelection(with: selectedObjectIDs)
             self.isApplyingReload = false
         }
