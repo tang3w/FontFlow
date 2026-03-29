@@ -53,7 +53,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
 
         outlineView = FontListOutlineView()
         outlineView.headerView = nil
-        outlineView.style = .fullWidth
+        outlineView.style = .inset
         outlineView.rowSizeStyle = .default
         outlineView.backgroundColor = .clear
         outlineView.focusRingType = .none
