@@ -47,15 +47,35 @@ struct FontItemIdentifier: Hashable {
 // MARK: - Child View Controller Protocol
 
 protocol FontBrowserChildViewControlling: AnyObject {
-    var onSelectionChanged: (([FontRecord]) -> Void)? { get set }
+    var onSelectionChanged: (([FontRecord], Bool) -> Void)? { get set }
     var onSectionToggled: ((String) -> Void)? { get set }
     func reloadData(
         familyNodes: [FontFamilyNode],
         fontsByObjectID: [NSManagedObjectID: FontRecord],
+        selectedObjectIDs: Set<NSManagedObjectID>,
         collapsedSections: Set<String>,
         animatingDifferences: Bool,
         reloadingSections: Set<String>
     )
+    func visibleFontObjectIDs() -> Set<NSManagedObjectID>
+}
+
+enum FontBrowserSelectionState {
+    static func updatedSelection(
+        existingObjectIDs: Set<NSManagedObjectID>,
+        visibleObjectIDs: Set<NSManagedObjectID>,
+        selectedVisibleObjectIDs: Set<NSManagedObjectID>,
+        preservesHiddenSelection: Bool
+    ) -> Set<NSManagedObjectID> {
+        guard preservesHiddenSelection else {
+            return selectedVisibleObjectIDs
+        }
+
+        var updatedObjectIDs = existingObjectIDs
+        updatedObjectIDs.subtract(visibleObjectIDs)
+        updatedObjectIDs.formUnion(selectedVisibleObjectIDs)
+        return updatedObjectIDs
+    }
 }
 
 // MARK: - FontBrowserViewController
@@ -74,6 +94,7 @@ class FontBrowserViewController: NSViewController {
     private var fontsByObjectID: [NSManagedObjectID: FontRecord] = [:]
     private var currentViewMode: FontViewMode = .grid
     private var collapsedSections: Set<String> = []
+    private var selectedFontObjectIDs: Set<NSManagedObjectID> = []
 
     private let childHostingView = AdditionalSafeAreaHostingView(
         additionalInsets: NSEdgeInsets(top: LayoutMetrics.headerContentHeight, left: 0, bottom: 0, right: 0)
@@ -144,9 +165,9 @@ class FontBrowserViewController: NSViewController {
     }
 
     private func wireChild(_ child: NSViewController & FontBrowserChildViewControlling) {
-        child.onSelectionChanged = { [weak self] fonts in
-            guard let self = self else { return }
-            self.delegate?.fontBrowserDidSelectFonts(self, fonts: fonts)
+        child.onSelectionChanged = { [weak self, weak child] fonts, preservesHiddenSelection in
+            guard let self = self, let child = child, self.activeChild === child else { return }
+            self.updateSelection(from: child, selectedFonts: fonts, preservesHiddenSelection: preservesHiddenSelection)
         }
         child.onSectionToggled = { [weak self] familyName in
             self?.toggleSection(familyName)
@@ -190,15 +211,17 @@ class FontBrowserViewController: NSViewController {
         for record in records {
             fontsByObjectID[record.objectID] = record
         }
+        selectedFontObjectIDs.formIntersection(Set(records.map { $0.objectID }))
 
         activeChild?.reloadData(
             familyNodes: familyNodes,
             fontsByObjectID: fontsByObjectID,
+            selectedObjectIDs: selectedFontObjectIDs,
             collapsedSections: collapsedSections,
             animatingDifferences: false,
             reloadingSections: []
         )
-        delegate?.fontBrowserDidSelectFonts(self, fonts: [])
+        delegate?.fontBrowserDidSelectFonts(self, fonts: selectedFontRecords())
     }
 
     /// Switches between list and grid view modes.
@@ -212,6 +235,7 @@ class FontBrowserViewController: NSViewController {
         activeChild?.reloadData(
             familyNodes: familyNodes,
             fontsByObjectID: fontsByObjectID,
+            selectedObjectIDs: selectedFontObjectIDs,
             collapsedSections: collapsedSections,
             animatingDifferences: false,
             reloadingSections: []
@@ -230,12 +254,35 @@ class FontBrowserViewController: NSViewController {
         activeChild?.reloadData(
             familyNodes: familyNodes,
             fontsByObjectID: fontsByObjectID,
+            selectedObjectIDs: selectedFontObjectIDs,
             collapsedSections: collapsedSections,
             // Keep section toggles non-animated so pinned headers resize immediately
             // when the scroll view autohides its vertical scroller.
             animatingDifferences: false,
             reloadingSections: [familyName]
         )
+    }
+
+    private func updateSelection(
+        from child: NSViewController & FontBrowserChildViewControlling,
+        selectedFonts: [FontRecord],
+        preservesHiddenSelection: Bool
+    ) {
+        let selectedVisibleObjectIDs = Set(selectedFonts.map { $0.objectID })
+        selectedFontObjectIDs = FontBrowserSelectionState.updatedSelection(
+            existingObjectIDs: selectedFontObjectIDs,
+            visibleObjectIDs: child.visibleFontObjectIDs(),
+            selectedVisibleObjectIDs: selectedVisibleObjectIDs,
+            preservesHiddenSelection: preservesHiddenSelection
+        )
+
+        delegate?.fontBrowserDidSelectFonts(self, fonts: selectedFontRecords())
+    }
+
+    private func selectedFontRecords() -> [FontRecord] {
+        familyNodes.flatMap { familyNode in
+            familyNode.fonts.filter { selectedFontObjectIDs.contains($0.objectID) }
+        }
     }
 
     // MARK: - Grouping

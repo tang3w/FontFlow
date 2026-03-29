@@ -26,7 +26,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         static let lastSectionBottomInset: CGFloat = 16
     }
 
-    var onSelectionChanged: (([FontRecord]) -> Void)?
+    var onSelectionChanged: (([FontRecord], Bool) -> Void)?
     var onSectionToggled: ((String) -> Void)?
 
     private var collectionView: NSCollectionView!
@@ -36,6 +36,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     private var collapsedSections: Set<String> = []
     private var currentColumnCount = 0
     private var lastLayoutWidth: CGFloat = 0
+    private var isApplyingReload = false
 
     // MARK: - Lifecycle
 
@@ -77,10 +78,13 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     func reloadData(
         familyNodes: [FontFamilyNode],
         fontsByObjectID: [NSManagedObjectID: FontRecord],
+        selectedObjectIDs: Set<NSManagedObjectID>,
         collapsedSections: Set<String>,
         animatingDifferences: Bool,
         reloadingSections: Set<String>
     ) {
+        loadViewIfNeeded()
+
         self.familyNodes = familyNodes
         self.fontsByObjectID = fontsByObjectID
         self.collapsedSections = collapsedSections
@@ -101,7 +105,20 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
             snapshot.reloadSections(sectionsToReload)
         }
 
-        dataSource.apply(snapshot, animatingDifferences: animatingDifferences)
+        isApplyingReload = true
+        dataSource.apply(snapshot, animatingDifferences: animatingDifferences) { [weak self] in
+            guard let self = self else { return }
+            self.restoreSelection(with: selectedObjectIDs)
+            self.isApplyingReload = false
+        }
+    }
+
+    func visibleFontObjectIDs() -> Set<NSManagedObjectID> {
+        Set(
+            familyNodes
+                .filter { !collapsedSections.contains($0.familyName) }
+                .flatMap { $0.fonts.map { $0.objectID } }
+        )
     }
 
     // MARK: - Data Source
@@ -220,6 +237,16 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         collectionView.collectionViewLayout?.invalidateLayout()
     }
 
+    private func restoreSelection(with objectIDs: Set<NSManagedObjectID>) {
+        let indexPaths = Set(objectIDs.compactMap { objectID in
+            dataSource.indexPath(for: FontItemIdentifier(objectID: objectID))
+        })
+        collectionView.deselectAll(nil)
+        if !indexPaths.isEmpty {
+            collectionView.selectItems(at: indexPaths, scrollPosition: [])
+        }
+    }
+
     private static func makeFallbackSection(for environment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
         let contentWidth = max(
             environment.container.effectiveContentSize.width - (LayoutMetrics.horizontalEdgeInset * 2),
@@ -319,10 +346,12 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
 extension FontGridViewController: NSCollectionViewDelegate {
 
     func collectionView(_ collectionView: NSCollectionView, didSelectItemsAt indexPaths: Set<IndexPath>) {
+        guard !isApplyingReload else { return }
         notifySelectionChanged()
     }
 
     func collectionView(_ collectionView: NSCollectionView, didDeselectItemsAt indexPaths: Set<IndexPath>) {
+        guard !isApplyingReload else { return }
         notifySelectionChanged()
     }
 
@@ -331,6 +360,11 @@ extension FontGridViewController: NSCollectionViewDelegate {
             guard let itemIdentifier = dataSource.itemIdentifier(for: indexPath) else { return nil }
             return fontsByObjectID[itemIdentifier.objectID]
         }
-        onSelectionChanged?(selectedRecords)
+        onSelectionChanged?(selectedRecords, preservesHiddenSelectionForCurrentEvent())
+    }
+
+    private func preservesHiddenSelectionForCurrentEvent() -> Bool {
+        let modifierFlags = NSApp.currentEvent?.modifierFlags.intersection(.deviceIndependentFlagsMask) ?? []
+        return modifierFlags.contains(.command) || modifierFlags.contains(.shift)
     }
 }

@@ -33,7 +33,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         static let fontRowHeight: CGFloat = 24
     }
 
-    var onSelectionChanged: (([FontRecord]) -> Void)?
+    var onSelectionChanged: (([FontRecord], Bool) -> Void)?
     var onSectionToggled: ((String) -> Void)?
 
     private var outlineView: NSOutlineView!
@@ -81,13 +81,12 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     func reloadData(
         familyNodes: [FontFamilyNode],
         fontsByObjectID: [NSManagedObjectID: FontRecord],
+        selectedObjectIDs: Set<NSManagedObjectID>,
         collapsedSections: Set<String>,
         animatingDifferences: Bool,
         reloadingSections: Set<String>
     ) {
         loadViewIfNeeded()
-
-        let previouslySelectedObjectIDs = selectedFontObjectIDs()
 
         self.familyNodes = familyNodes
         self.fontsByObjectID = fontsByObjectID
@@ -96,12 +95,16 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         isApplyingReload = true
         outlineView.reloadData()
         synchronizeExpansionState()
-        restoreSelection(with: previouslySelectedObjectIDs)
+        restoreSelection(with: selectedObjectIDs)
         isApplyingReload = false
+    }
 
-        if selectedFontObjectIDs() != previouslySelectedObjectIDs {
-            notifySelectionChanged()
-        }
+    func visibleFontObjectIDs() -> Set<NSManagedObjectID> {
+        Set(
+            familyNodes
+                .filter { !collapsedSections.contains($0.familyName) }
+                .flatMap { $0.fonts.map { $0.objectID } }
+        )
     }
 
     // MARK: - Helpers
@@ -134,10 +137,6 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         outlineView.selectRowIndexes(rows, byExtendingSelection: false)
     }
 
-    private func selectedFontObjectIDs() -> Set<NSManagedObjectID> {
-        Set(selectedFontRecords().map { $0.objectID })
-    }
-
     private func selectedFontRecords() -> [FontRecord] {
         outlineView.selectedRowIndexes.compactMap { row in
             outlineView.item(atRow: row) as? FontRecord
@@ -145,7 +144,12 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     }
 
     private func notifySelectionChanged() {
-        onSelectionChanged?(selectedFontRecords())
+        onSelectionChanged?(selectedFontRecords(), preservesHiddenSelectionForCurrentEvent())
+    }
+
+    private func preservesHiddenSelectionForCurrentEvent() -> Bool {
+        let modifierFlags = NSApp.currentEvent?.modifierFlags.intersection(.deviceIndependentFlagsMask) ?? []
+        return modifierFlags.contains(.command) || modifierFlags.contains(.shift)
     }
 }
 
