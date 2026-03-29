@@ -23,6 +23,7 @@ nonisolated struct FontFaceMetadata: Sendable {
     let displayName: String
     let familyName: String
     let styleName: String
+    let fontTraits: FontTraits
     let isVariable: Bool
     let variationAxes: [VariationAxis]
     let glyphCount: Int
@@ -70,6 +71,7 @@ nonisolated struct FontMetadataReader {
 
             let font = CTFontCreateWithFontDescriptor(descriptor, 0, nil)
             let glyphCount = CTFontGetGlyphCount(font)
+            let fontTraits = readFontTraits(from: font)
 
             var axes: [VariationAxis] = []
             if let rawAxes = CTFontCopyVariationAxes(font) as? [[String: Any]] {
@@ -89,6 +91,7 @@ nonisolated struct FontMetadataReader {
                 displayName: display,
                 familyName: family,
                 styleName: style,
+                fontTraits: fontTraits,
                 isVariable: !axes.isEmpty,
                 variationAxes: axes,
                 glyphCount: glyphCount
@@ -96,5 +99,20 @@ nonisolated struct FontMetadataReader {
         }
 
         return FontFileMetadata(fileURL: url, fileSize: fileSize, faces: faces)
+    }
+
+    private static func readFontTraits(from font: CTFont) -> FontTraits {
+        let rawTraits = CTFontCopyTraits(font) as NSDictionary
+
+        return FontTraits(
+            weight: numericTrait(kCTFontWeightTrait, from: rawTraits),
+            width: numericTrait(kCTFontWidthTrait, from: rawTraits),
+            slant: numericTrait(kCTFontSlantTrait, from: rawTraits),
+            symbolicTraits: CTFontGetSymbolicTraits(font)
+        )
+    }
+
+    private static func numericTrait(_ key: CFString, from traits: NSDictionary) -> Double? {
+        (traits[key] as? NSNumber)?.doubleValue
     }
 }

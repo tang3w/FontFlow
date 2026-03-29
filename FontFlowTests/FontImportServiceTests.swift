@@ -87,6 +87,25 @@ struct FontImportServiceTests {
         #expect(record.bookmarkData != nil)
     }
 
+    @Test func importPersistsExtractedFontTraits() throws {
+        let ctx = try makeInMemoryContext()
+        let url = try bundledFontURL("Cousine-Regular.ttf")
+
+        let result = FontImportService.importFonts(from: [url], context: ctx)
+
+        guard case .imported(let record) = result.items.first?.status else {
+            Issue.record("Expected .imported status")
+            return
+        }
+
+        #expect(record.traitWeight?.doubleValue == 0)
+        #expect(record.traitWidth?.doubleValue == 0)
+        #expect(record.traitSlant?.doubleValue == 0)
+        #expect(record.traitSymbolicTraitsRaw != 0)
+        #expect(record.fontTraits.widthBucket == .normal)
+        #expect(!record.fontTraits.isItalicLike)
+    }
+
     @Test func importCreatesFontFamily() throws {
         let ctx = try makeInMemoryContext()
         let url = try bundledFontURL("Cousine-Regular.ttf")

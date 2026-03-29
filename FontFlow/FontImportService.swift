@@ -218,6 +218,7 @@ struct FontImportService {
         record.displayName = face.displayName
         record.familyName = face.familyName
         record.styleName = face.styleName
+        record.applyFontTraits(face.fontTraits)
         record.filePath = fileURL.path
         record.fileSize = fileSize
         record.fileHash = fileHash

@@ -7,6 +7,7 @@
 
 import Testing
 import CoreData
+import CoreText
 @testable import FontFlow
 
 @MainActor
@@ -82,6 +83,41 @@ struct CoreDataModelTests {
         #expect(record.duplicateGroupID == nil)
         #expect(record.lastUsedDate == nil)
         #expect(record.bookmarkData == nil)
+        #expect(record.traitWeight == nil)
+        #expect(record.traitWidth == nil)
+        #expect(record.traitSlant == nil)
+        #expect(record.traitSymbolicTraitsRaw == 0)
+    }
+
+    @Test func fontRecordAppliesAndReadsTraits() throws {
+        let ctx = try makeInMemoryContext()
+
+        let record = FontRecord(context: ctx)
+        record.id = UUID()
+        record.postScriptName = "Helvetica-Oblique"
+        record.displayName = "Helvetica Oblique"
+        record.familyName = "Helvetica"
+        record.styleName = "Oblique"
+        record.filePath = "/System/Library/Fonts/Helvetica.ttc"
+        record.importedDate = Date()
+
+        let traits = FontTraits(
+            weight: 0,
+            width: 0,
+            slant: 0.06666666666666667,
+            symbolicTraits: [.traitItalic]
+        )
+        record.applyFontTraits(traits)
+
+        #expect(record.traitWeight?.doubleValue == 0)
+        #expect(record.traitWidth?.doubleValue == 0)
+        #expect(record.traitSlant?.doubleValue == traits.slant)
+        #expect(record.traitSymbolicTraitsRaw == Int64(CTFontSymbolicTraits.traitItalic.rawValue))
+
+        let storedTraits = record.fontTraits
+        #expect(storedTraits.isItalicLike)
+        #expect(storedTraits.effectiveSlant == traits.slant)
+        #expect(storedTraits.widthBucket == .normal)
     }
 
     // MARK: - FontFamily & Relationship

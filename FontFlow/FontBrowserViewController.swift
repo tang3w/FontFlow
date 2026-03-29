@@ -181,7 +181,6 @@ class FontBrowserViewController: NSViewController {
         request.predicate = predicate
         request.sortDescriptors = [
             NSSortDescriptor(key: "familyName", ascending: true, selector: #selector(NSString.localizedCaseInsensitiveCompare(_:))),
-            NSSortDescriptor(key: "styleName", ascending: true, selector: #selector(NSString.localizedCaseInsensitiveCompare(_:))),
         ]
         let records = (try? managedObjectContext.fetch(request)) ?? []
         familyNodes = buildFamilyNodes(from: records)
@@ -242,26 +241,31 @@ class FontBrowserViewController: NSViewController {
     // MARK: - Grouping
 
     private func buildFamilyNodes(from records: [FontRecord]) -> [FontFamilyNode] {
-        var grouped: [(String, [FontRecord])] = []
-        var currentFamily: String?
-        var currentRecords: [FontRecord] = []
+        let groupedRecords = Dictionary(grouping: records) { record in
+            record.familyName ?? "Unknown"
+        }
 
-        for record in records {
-            let family = record.familyName ?? "Unknown"
-            if family == currentFamily {
-                currentRecords.append(record)
-            } else {
-                if let name = currentFamily {
-                    grouped.append((name, currentRecords))
-                }
-                currentFamily = family
-                currentRecords = [record]
+        let sortedFamilyNames = groupedRecords.keys.sorted { lhs, rhs in
+            lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+        }
+
+        return sortedFamilyNames.map { familyName in
+            let sortedFonts = groupedRecords[familyName, default: []].sorted { lhs, rhs in
+                FontFamilyTypefaceSorter.areInIncreasingOrder(
+                    lhsTraits: lhs.fontTraits,
+                    rhsTraits: rhs.fontTraits,
+                    lhsStyleName: lhs.styleName,
+                    rhsStyleName: rhs.styleName,
+                    lhsDisplayName: lhs.displayName,
+                    rhsDisplayName: rhs.displayName,
+                    lhsPostScriptName: lhs.postScriptName,
+                    rhsPostScriptName: rhs.postScriptName,
+                    lhsStableID: lhs.typefaceSortStableID,
+                    rhsStableID: rhs.typefaceSortStableID
+                )
             }
-        }
-        if let name = currentFamily {
-            grouped.append((name, currentRecords))
-        }
 
-        return grouped.map { FontFamilyNode(familyName: $0.0, fonts: $0.1) }
+            return FontFamilyNode(familyName: familyName, fonts: sortedFonts)
+        }
     }
 }

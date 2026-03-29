@@ -16,6 +16,10 @@
         <attribute name="isValid" attributeType="Boolean" defaultValueString="YES" usesScalarValueType="YES"/>
         <attribute name="duplicateGroupID" optional="YES" attributeType="UUID" usesScalarValueType="NO"/>
         <attribute name="fileHash" optional="YES" attributeType="String"/>
+        <attribute name="traitWeight" optional="YES" attributeType="Double" usesScalarValueType="NO"/>
+        <attribute name="traitWidth" optional="YES" attributeType="Double" usesScalarValueType="NO"/>
+        <attribute name="traitSlant" optional="YES" attributeType="Double" usesScalarValueType="NO"/>
+        <attribute name="traitSymbolicTraitsRaw" attributeType="Integer 64" defaultValueString="0" usesScalarValueType="YES"/>
         <relationship name="family" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="FontFamily" inverseName="fonts" inverseEntity="FontFamily"/>
         <relationship name="tags" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="Tag" inverseName="fonts" inverseEntity="Tag"/>
         <relationship name="collections" optional="YES" toMany="YES" deletionRule="Nullify" destinationEntity="FontCollection" inverseName="fonts" inverseEntity="FontCollection"/>

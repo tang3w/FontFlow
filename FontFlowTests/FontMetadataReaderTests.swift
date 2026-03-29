@@ -7,6 +7,7 @@
 
 import Testing
 import Foundation
+import CoreText
 @testable import FontFlow
 
 struct FontMetadataReaderTests {
@@ -59,6 +60,19 @@ struct FontMetadataReaderTests {
         #expect(face.variationAxes.isEmpty)
     }
 
+    @Test func readsCoreTextTraitsForRegularFont() throws {
+        let url = try Self.bundledFontURL("Cousine-Regular.ttf")
+        let metadata = try FontMetadataReader.readMetadata(from: url)
+
+        let face = try #require(metadata.faces.first)
+        #expect(face.fontTraits.weight == 0)
+        #expect(face.fontTraits.width == 0)
+        #expect(face.fontTraits.slant == 0)
+        #expect(!face.fontTraits.isItalicLike)
+        #expect(face.fontTraits.widthBucket == .normal)
+        #expect(face.fontTraits.symbolicTraits.rawValue != 0)
+    }
+
     // MARK: - Variable Font (Inter — SIL OFL)
 
     @Test func readVariableFont() throws {
@@ -80,6 +94,14 @@ struct FontMetadataReaderTests {
             #expect(weight.defaultValue >= weight.minValue)
             #expect(weight.defaultValue <= weight.maxValue)
         }
+
+        let regularFace = metadata.faces.first { $0.styleName == "Regular" }
+        let blackFace = metadata.faces.first { $0.styleName == "Black" }
+        let regularTraits = try #require(regularFace?.fontTraits)
+        let blackTraits = try #require(blackFace?.fontTraits)
+        #expect(regularTraits.widthBucket == .normal)
+        #expect(regularTraits.effectiveWeight < blackTraits.effectiveWeight)
+        #expect(!blackTraits.isItalicLike)
     }
 
     @Test func variationAxisValuesAreConsistent() throws {
@@ -116,6 +138,24 @@ struct FontMetadataReaderTests {
             #expect(!face.displayName.isEmpty)
             #expect(face.glyphCount > 0)
         }
+    }
+
+    @Test func readsItalicAndWeightTraitsFromCollectionFaces() throws {
+        let url = URL(fileURLWithPath: "/System/Library/Fonts/Helvetica.ttc")
+        let metadata = try FontMetadataReader.readMetadata(from: url)
+
+        let regularFace = metadata.faces.first { $0.postScriptName == "Helvetica" }
+        let boldFace = metadata.faces.first { $0.postScriptName == "Helvetica-Bold" }
+        let obliqueFace = metadata.faces.first { $0.postScriptName == "Helvetica-Oblique" }
+
+        let regularTraits = try #require(regularFace?.fontTraits)
+        let boldTraits = try #require(boldFace?.fontTraits)
+        let obliqueTraits = try #require(obliqueFace?.fontTraits)
+
+        #expect(regularTraits.effectiveWeight < boldTraits.effectiveWeight)
+        #expect(!regularTraits.isItalicLike)
+        #expect(obliqueTraits.isItalicLike)
+        #expect(obliqueTraits.effectiveSlant > regularTraits.effectiveSlant)
     }
 
     // MARK: - Error Handling
