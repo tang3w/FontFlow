@@ -288,9 +288,9 @@ extension MainSplitViewController: NSToolbarDelegate {
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
         [
             .sidebarTrackingSeparator,
-            .fontSearch,
-            .flexibleSpace,
             .viewMode,
+            .flexibleSpace,
+            .fontSearch,
             .detailTrackingSeparator,
             .previewScript,
             .flexibleSpace,
