@@ -59,6 +59,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         outlineView.focusRingType = .none
         outlineView.allowsMultipleSelection = true
         outlineView.allowsEmptySelection = true
+        outlineView.usesAlternatingRowBackgroundColors = true
         outlineView.indentationPerLevel = LayoutMetrics.indentationPerLevel
         outlineView.dataSource = self
         outlineView.delegate = self
