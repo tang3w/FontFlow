@@ -13,8 +13,8 @@ final class FontListSectionCellView: NSTableCellView {
 
     var onToggle: (() -> Void)?
 
-    private let nameLabel: HitTestPassthroughTextField = {
-        let label = HitTestPassthroughTextField(labelWithString: "")
+    private let nameLabel: NSTextField = {
+        let label = NSTextField(labelWithString: "")
         label.font = .systemFont(ofSize: 13, weight: .semibold)
         label.textColor = .labelColor
         label.lineBreakMode = .byTruncatingTail
@@ -22,8 +22,8 @@ final class FontListSectionCellView: NSTableCellView {
         return label
     }()
 
-    private let countLabel: HitTestPassthroughTextField = {
-        let label = HitTestPassthroughTextField(labelWithString: "")
+    private let countLabel: NSTextField = {
+        let label = NSTextField(labelWithString: "")
         label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         label.textColor = .secondaryLabelColor
         label.alignment = .right
