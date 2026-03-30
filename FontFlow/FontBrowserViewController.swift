@@ -58,6 +58,8 @@ protocol FontBrowserChildViewControlling: AnyObject {
         reloadingSections: Set<String>
     )
     func visibleFontObjectIDs() -> Set<NSManagedObjectID>
+    func isPrimaryViewFirstResponder() -> Bool
+    func focusPrimaryView()
 }
 
 enum FontBrowserSelectionState {
@@ -227,12 +229,13 @@ class FontBrowserViewController: NSViewController {
     /// Switches between list and grid view modes.
     func setViewMode(_ mode: FontViewMode) {
         guard mode != currentViewMode else { return }
+        let shouldRestorePrimaryFocus = activeChild?.isPrimaryViewFirstResponder() ?? false
         currentViewMode = mode
 
         let child: NSViewController & FontBrowserChildViewControlling = mode == .list ? listViewController : gridViewController
         showChild(child)
 
-        activeChild?.reloadData(
+        child.reloadData(
             familyNodes: familyNodes,
             fontsByObjectID: fontsByObjectID,
             selectedObjectIDs: selectedFontObjectIDs,
@@ -240,6 +243,10 @@ class FontBrowserViewController: NSViewController {
             animatingDifferences: false,
             reloadingSections: []
         )
+
+        if shouldRestorePrimaryFocus {
+            child.focusPrimaryView()
+        }
     }
 
     // MARK: - Section Toggle

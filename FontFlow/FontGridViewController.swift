@@ -45,6 +45,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     /// for a stale generation it is discarded, preventing it from restoring
     /// outdated selection or prematurely clearing `isApplyingReload`.
     private var reloadGeneration = 0
+    private var shouldFocusPrimaryViewAfterReload = false
 
     // MARK: - Lifecycle
 
@@ -120,6 +121,10 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
             guard let self = self, self.reloadGeneration == generation else { return }
             self.restoreSelection(with: selectedObjectIDs)
             self.isApplyingReload = false
+            if self.shouldFocusPrimaryViewAfterReload {
+                self.shouldFocusPrimaryViewAfterReload = false
+                self.focusPrimaryViewIfPossible()
+            }
         }
     }
 
@@ -129,6 +134,27 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
                 .filter { !collapsedSections.contains($0.familyName) }
                 .flatMap { $0.fonts.map { $0.objectID } }
         )
+    }
+
+    func isPrimaryViewFirstResponder() -> Bool {
+        let responder = view.window?.firstResponder
+        guard let responder else { return false }
+        if responder === collectionView {
+            return true
+        }
+
+        guard let view = responder as? NSView else { return false }
+        return view.isDescendant(of: collectionView)
+    }
+
+    func focusPrimaryView() {
+        loadViewIfNeeded()
+        guard !isApplyingReload else {
+            shouldFocusPrimaryViewAfterReload = true
+            return
+        }
+
+        focusPrimaryViewIfPossible()
     }
 
     // MARK: - Data Source
@@ -255,6 +281,10 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         if !indexPaths.isEmpty {
             collectionView.selectItems(at: indexPaths, scrollPosition: [])
         }
+    }
+
+    private func focusPrimaryViewIfPossible() {
+        view.window?.makeFirstResponder(collectionView)
     }
 
     private static func makeFallbackSection(for environment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {

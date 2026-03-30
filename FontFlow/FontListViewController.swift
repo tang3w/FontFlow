@@ -107,6 +107,22 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         )
     }
 
+    func isPrimaryViewFirstResponder() -> Bool {
+        let responder = view.window?.firstResponder
+        guard let responder else { return false }
+        if responder === outlineView {
+            return true
+        }
+
+        guard let view = responder as? NSView else { return false }
+        return view.isDescendant(of: outlineView)
+    }
+
+    func focusPrimaryView() {
+        loadViewIfNeeded()
+        view.window?.makeFirstResponder(outlineView)
+    }
+
     // MARK: - Helpers
 
     private func synchronizeExpansionState() {
