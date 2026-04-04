@@ -29,16 +29,18 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         return effectView
     }()
 
-    private let chevronImageView: NSImageView = {
-        let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .medium)
-        let image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: "Disclosure")!
-            .withSymbolConfiguration(config)!
-        let imageView = NSImageView(image: image)
-        imageView.contentTintColor = .secondaryLabelColor
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        imageView.setContentHuggingPriority(.required, for: .horizontal)
-        imageView.setContentCompressionResistancePriority(.required, for: .horizontal)
-        return imageView
+    private let disclosureButton: NSButton = {
+        let button = NSButton(title: "", target: nil, action: nil)
+        button.bezelStyle = .circular
+        button.imagePosition = .imageOnly
+        button.isBordered = true
+        button.controlSize = .small
+        button.contentTintColor = .secondaryLabelColor
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setAccessibilityIdentifier("font-section-disclosure-button")
+        button.setContentHuggingPriority(.required, for: .horizontal)
+        button.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return button
     }()
 
     private let nameLabel: NSTextField = {
@@ -65,7 +67,10 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         addSubview(backgroundEffectView)
         backgroundEffectView.addSubview(nameLabel)
         backgroundEffectView.addSubview(countLabel)
-        backgroundEffectView.addSubview(chevronImageView)
+        backgroundEffectView.addSubview(disclosureButton)
+
+        disclosureButton.target = self
+        disclosureButton.action = #selector(handleDisclosureButtonPress(_:))
 
         let contentInsets = Self.contentInsets
 
@@ -77,16 +82,17 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
             nameLabel.leadingAnchor.constraint(equalTo: backgroundEffectView.leadingAnchor, constant: contentInsets.left + 8),
             nameLabel.topAnchor.constraint(equalTo: backgroundEffectView.topAnchor, constant: contentInsets.top - 5),
-            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: chevronImageView.leadingAnchor, constant: -(contentInsets.left + 2)),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: disclosureButton.leadingAnchor, constant: -(contentInsets.left + 2)),
 
             countLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
             countLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 1),
             countLabel.bottomAnchor.constraint(equalTo: backgroundEffectView.bottomAnchor, constant: -(contentInsets.top - 5)),
-            countLabel.trailingAnchor.constraint(lessThanOrEqualTo: chevronImageView.leadingAnchor, constant: -(contentInsets.left + 2)),
+            countLabel.trailingAnchor.constraint(lessThanOrEqualTo: disclosureButton.leadingAnchor, constant: -(contentInsets.left + 2)),
 
-            chevronImageView.trailingAnchor.constraint(equalTo: backgroundEffectView.trailingAnchor, constant: -(contentInsets.right + 8)),
-            chevronImageView.centerYAnchor.constraint(equalTo: backgroundEffectView.centerYAnchor),
-            chevronImageView.widthAnchor.constraint(equalToConstant: 12),
+            disclosureButton.trailingAnchor.constraint(equalTo: backgroundEffectView.trailingAnchor, constant: -(contentInsets.right + 2)),
+            disclosureButton.centerYAnchor.constraint(equalTo: backgroundEffectView.centerYAnchor),
+            disclosureButton.widthAnchor.constraint(equalToConstant: 22),
+            disclosureButton.heightAnchor.constraint(equalTo: disclosureButton.widthAnchor),
         ])
     }
 
@@ -116,27 +122,18 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         updateChevron(collapsed: false)
     }
 
-    override func mouseDown(with event: NSEvent) {
-        // Consume the event to prevent NSCollectionView default behavior
-        // but do not trigger the toggle yet to prevent layout shifting mid-click.
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        // Ignore double clicks to prevent accidental double-toggling
-        guard event.clickCount == 1 else { return }
-
-        // Ensure the user released the mouse inside the header
-        let location = convert(event.locationInWindow, from: nil)
-        if bounds.contains(location) {
-            onToggle?()
-        }
+    @objc private func handleDisclosureButtonPress(_ sender: NSButton) {
+        onToggle?()
     }
 
     private func updateChevron(collapsed: Bool) {
         let symbolName = collapsed ? "chevron.right" : "chevron.down"
-        let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .medium)
-        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: "Disclosure")!
+        let actionLabel = collapsed ? "Expand section" : "Collapse section"
+        let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: actionLabel)!
             .withSymbolConfiguration(config)!
-        chevronImageView.image = image
+        disclosureButton.image = image
+        disclosureButton.toolTip = actionLabel
+        disclosureButton.setAccessibilityLabel(actionLabel)
     }
 }
