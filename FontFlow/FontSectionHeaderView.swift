@@ -23,7 +23,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         effectView.state = .active
         effectView.translatesAutoresizingMaskIntoConstraints = false
         effectView.wantsLayer = true
-        effectView.layer?.cornerRadius = 16
+        effectView.layer?.cornerRadius = 15
         effectView.layer?.cornerCurve = .continuous
         effectView.layer?.borderWidth = 1
         return effectView
