@@ -11,7 +11,7 @@ final class FontBrowserCountView: NSView {
 
     private enum LayoutMetrics {
         static let stackSpacing: CGFloat = 8
-        static let familyFontSize: CGFloat = 22
+        static let familyFontSize: CGFloat = 17
         static let typefaceFontSize: CGFloat = 13
     }
 

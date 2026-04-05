@@ -46,7 +46,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     private let nameLabel: NSTextField = {
         let label = NSTextField(labelWithString: "")
         label.font = .systemFont(ofSize: 15, weight: .semibold)
-        label.textColor = .labelColor
+        label.textColor = .headerTextColor
         label.lineBreakMode = .byTruncatingTail
         label.translatesAutoresizingMaskIntoConstraints = false
         return label
