@@ -19,7 +19,7 @@ class FontDetailViewController: NSViewController {
     // MARK: - Empty State
 
     private let emptyLabel: NSTextField = {
-        let label = NSTextField(labelWithString: "Select a font to preview")
+        let label = NSTextField(labelWithString: "Select fonts to preview")
         label.font = .systemFont(ofSize: 16)
         label.textColor = .secondaryLabelColor
         label.alignment = .center
