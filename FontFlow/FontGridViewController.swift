@@ -374,7 +374,9 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
             bottom: 0,
             trailing: LayoutMetrics.headerHorizontalInset
         )
-        header.pinToVisibleBounds = true
+        // Disabling the pinToVisibleBounds,
+        // when this is enabled, the header view will be flickering while live-scrolling.
+        // header.pinToVisibleBounds = true
         section.boundarySupplementaryItems = [header]
 
         return section
