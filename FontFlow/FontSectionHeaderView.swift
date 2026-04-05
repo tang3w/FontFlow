@@ -11,7 +11,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
     static let elementKind = "SectionHeader"
     static let identifier = NSUserInterfaceItemIdentifier("FontSectionHeader")
-    static let estimatedHeight: CGFloat = 54
+    static let estimatedHeight: CGFloat = 45
     static let contentInsets = NSEdgeInsets(top: 10, left: 10, bottom: 0, right: 10)
 
     var onToggle: (() -> Void)?
@@ -23,23 +23,18 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         effectView.state = .active
         effectView.translatesAutoresizingMaskIntoConstraints = false
         effectView.wantsLayer = true
-        effectView.layer?.cornerRadius = 15
+        effectView.layer?.cornerRadius = 10
         effectView.layer?.cornerCurve = .continuous
         effectView.layer?.borderWidth = 1
         return effectView
     }()
 
     private let disclosureButton: NSButton = {
-        let button = NSButton(title: "", target: nil, action: nil)
-        button.bezelStyle = .circular
-        button.imagePosition = .imageOnly
-        button.isBordered = true
-        button.controlSize = .small
-        button.contentTintColor = .secondaryLabelColor
+        let button = NSButton(title: "0", target: nil, action: nil)
+        button.bezelStyle = .badge
+        button.imagePosition = .imageTrailing
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setAccessibilityIdentifier("font-section-disclosure-button")
-        button.setContentHuggingPriority(.required, for: .horizontal)
-        button.setContentCompressionResistancePriority(.required, for: .horizontal)
         return button
     }()
 
@@ -52,13 +47,6 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         return label
     }()
 
-    private let countLabel: NSTextField = {
-        let label = NSTextField(labelWithString: "")
-        label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-        label.textColor = .tertiaryLabelColor
-        label.translatesAutoresizingMaskIntoConstraints = false
-        return label
-    }()
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -66,7 +54,6 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
         addSubview(backgroundEffectView)
         backgroundEffectView.addSubview(nameLabel)
-        backgroundEffectView.addSubview(countLabel)
         backgroundEffectView.addSubview(disclosureButton)
 
         disclosureButton.target = self
@@ -80,19 +67,13 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
             backgroundEffectView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -contentInsets.right),
             backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -contentInsets.bottom),
 
-            nameLabel.leadingAnchor.constraint(equalTo: backgroundEffectView.leadingAnchor, constant: contentInsets.left + 8),
-            nameLabel.topAnchor.constraint(equalTo: backgroundEffectView.topAnchor, constant: contentInsets.top - 5),
-            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: disclosureButton.leadingAnchor, constant: -(contentInsets.left + 2)),
+            nameLabel.leadingAnchor.constraint(equalTo: backgroundEffectView.leadingAnchor, constant: contentInsets.left),
+            nameLabel.topAnchor.constraint(equalTo: backgroundEffectView.topAnchor, constant: 8),
+            nameLabel.bottomAnchor.constraint(equalTo: backgroundEffectView.bottomAnchor, constant: -8),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: disclosureButton.leadingAnchor, constant: -10),
 
-            countLabel.leadingAnchor.constraint(equalTo: nameLabel.leadingAnchor),
-            countLabel.topAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: 1),
-            countLabel.bottomAnchor.constraint(equalTo: backgroundEffectView.bottomAnchor, constant: -(contentInsets.top - 5)),
-            countLabel.trailingAnchor.constraint(lessThanOrEqualTo: disclosureButton.leadingAnchor, constant: -(contentInsets.left + 2)),
-
-            disclosureButton.trailingAnchor.constraint(equalTo: backgroundEffectView.trailingAnchor, constant: -(contentInsets.right + 2)),
+            disclosureButton.trailingAnchor.constraint(equalTo: backgroundEffectView.trailingAnchor, constant: -contentInsets.right),
             disclosureButton.centerYAnchor.constraint(equalTo: backgroundEffectView.centerYAnchor),
-            disclosureButton.widthAnchor.constraint(equalToConstant: 22),
-            disclosureButton.heightAnchor.constraint(equalTo: disclosureButton.widthAnchor),
         ])
     }
 
@@ -107,9 +88,15 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         fatalError("init(coder:) is not supported")
     }
 
+    private static func badgeTitle(_ string: String) -> NSAttributedString {
+        NSAttributedString(string: string, attributes: [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+        ])
+    }
+
     func configure(familyName: String, count: Int, isCollapsed: Bool, onToggle: @escaping () -> Void) {
         nameLabel.stringValue = familyName
-        countLabel.stringValue = "\(count) " + (count == 1 ? "typeface" : "typefaces")
+        disclosureButton.attributedTitle = Self.badgeTitle("\(count)")
         self.onToggle = onToggle
         updateChevron(collapsed: isCollapsed)
     }
@@ -117,7 +104,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     override func prepareForReuse() {
         super.prepareForReuse()
         nameLabel.stringValue = ""
-        countLabel.stringValue = ""
+        disclosureButton.attributedTitle = Self.badgeTitle("0")
         onToggle = nil
         updateChevron(collapsed: false)
     }
@@ -127,9 +114,9 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     }
 
     private func updateChevron(collapsed: Bool) {
-        let symbolName = collapsed ? "chevron.right" : "chevron.down"
+        let symbolName = collapsed ? "chevron.down" : "chevron.up"
         let actionLabel = collapsed ? "Expand section" : "Collapse section"
-        let config = NSImage.SymbolConfiguration(pointSize: 10, weight: .semibold)
+        let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold)
         let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: actionLabel)!
             .withSymbolConfiguration(config)!
         disclosureButton.image = image

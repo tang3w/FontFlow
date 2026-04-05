@@ -37,7 +37,7 @@ final class FontGridContentView: NSView, NSCollectionViewElement {
         override init(frame frameRect: NSRect) {
             super.init(frame: frameRect)
             wantsLayer = true
-            layer?.cornerRadius = 15
+            layer?.cornerRadius = 10
             layer?.cornerCurve = .continuous
             layer?.borderWidth = 1
         }
