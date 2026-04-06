@@ -93,7 +93,7 @@ final class FontGridContentView: NSView, NSCollectionViewElement {
     private let nameLabel: NSTextField = {
         let label = NSTextField(wrappingLabelWithString: "")
         label.font = .systemFont(ofSize: 11)
-        label.textColor = .secondaryLabelColor
+        label.textColor = .labelColor
         label.alignment = .center
         label.lineBreakMode = .byWordWrapping
         label.maximumNumberOfLines = 3
