@@ -11,7 +11,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
     static let elementKind = "SectionHeader"
     static let identifier = NSUserInterfaceItemIdentifier("FontSectionHeader")
-    static let estimatedHeight: CGFloat = 45
+    static let estimatedHeight: CGFloat = 49
     static let contentInsets = NSEdgeInsets(top: 10, left: 10, bottom: 0, right: 10)
 
     var onToggle: (() -> Void)?
@@ -68,8 +68,8 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
             backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -contentInsets.bottom),
 
             nameLabel.leadingAnchor.constraint(equalTo: backgroundEffectView.leadingAnchor, constant: contentInsets.left),
-            nameLabel.topAnchor.constraint(equalTo: backgroundEffectView.topAnchor, constant: 8),
-            nameLabel.bottomAnchor.constraint(equalTo: backgroundEffectView.bottomAnchor, constant: -8),
+            nameLabel.topAnchor.constraint(equalTo: backgroundEffectView.topAnchor, constant: 10),
+            nameLabel.bottomAnchor.constraint(equalTo: backgroundEffectView.bottomAnchor, constant: -10),
             nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: disclosureButton.leadingAnchor, constant: -10),
 
             disclosureButton.trailingAnchor.constraint(equalTo: backgroundEffectView.trailingAnchor, constant: -contentInsets.right),
