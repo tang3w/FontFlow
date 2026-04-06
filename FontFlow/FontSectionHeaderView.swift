@@ -31,7 +31,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
     private let disclosureButton: NSButton = {
         let button = NSButton(title: "0", target: nil, action: nil)
-        button.bezelStyle = .badge
+        button.bezelStyle = .circular
         button.imagePosition = .imageTrailing
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setAccessibilityIdentifier("font-section-disclosure-button")
@@ -90,35 +90,38 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
     private static func badgeTitle(_ string: String) -> NSAttributedString {
         NSAttributedString(string: string, attributes: [
-            .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium),
+            .foregroundColor: NSColor.secondaryLabelColor
         ])
     }
 
     func configure(familyName: String, count: Int, isCollapsed: Bool, onToggle: @escaping () -> Void) {
         nameLabel.stringValue = familyName
-        disclosureButton.attributedTitle = Self.badgeTitle("\(count)")
         self.onToggle = onToggle
-        updateChevron(collapsed: isCollapsed)
+        updateDisclosureButton(count: count, collapsed: isCollapsed)
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
         nameLabel.stringValue = ""
-        disclosureButton.attributedTitle = Self.badgeTitle("0")
         onToggle = nil
-        updateChevron(collapsed: false)
+        updateDisclosureButton(count: 0, collapsed: false)
     }
 
     @objc private func handleDisclosureButtonPress(_ sender: NSButton) {
         onToggle?()
     }
 
-    private func updateChevron(collapsed: Bool) {
+    private func updateDisclosureButton(count: Int, collapsed: Bool) {
+        disclosureButton.attributedTitle = Self.badgeTitle("\(count)")
+
         let symbolName = collapsed ? "chevron.down" : "chevron.up"
         let actionLabel = collapsed ? "Expand section" : "Collapse section"
-        let config = NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold)
-        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: actionLabel)!
-            .withSymbolConfiguration(config)!
+        let sizeConfig = NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold)
+        let colorConfig = NSImage.SymbolConfiguration(hierarchicalColor: .secondaryLabelColor)
+        let config = sizeConfig.applying(colorConfig)
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: actionLabel)?
+            .withSymbolConfiguration(config)
         disclosureButton.image = image
         disclosureButton.toolTip = actionLabel
         disclosureButton.setAccessibilityLabel(actionLabel)
