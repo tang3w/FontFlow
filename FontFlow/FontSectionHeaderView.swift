@@ -32,6 +32,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     private let disclosureButton: NSButton = {
         let button = NSButton(title: "0", target: nil, action: nil)
         button.bezelStyle = .circular
+        button.showsBorderOnlyWhileMouseInside = true
         button.imagePosition = .imageTrailing
         button.translatesAutoresizingMaskIntoConstraints = false
         button.setAccessibilityIdentifier("font-section-disclosure-button")
