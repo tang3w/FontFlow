@@ -138,6 +138,12 @@ final class PreviewTextStylePopoverViewController: NSViewController {
         }
     }
 
+    override func viewWillDisappear() {
+        super.viewWillDisappear()
+        deactivateColorWells()
+        dismissSystemColorPanel()
+    }
+
     func apply(style: FontPreviewTextStyle) {
         currentStyle = style
 
@@ -219,6 +225,15 @@ final class PreviewTextStylePopoverViewController: NSViewController {
         currentStyle = nextStyle
         updateControls()
         onStyleChanged?(currentStyle)
+    }
+
+    private func deactivateColorWells() {
+        foregroundColorWell.deactivate()
+        backgroundColorWell.deactivate()
+    }
+
+    private func dismissSystemColorPanel() {
+        NSColorPanel.shared.orderOut(nil)
     }
 
     @objc private func lineSpacingChanged(_ sender: NSSlider) {
