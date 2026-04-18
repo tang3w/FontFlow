@@ -51,8 +51,7 @@ FontFlow/
     Main/             # Top-level split view controller and shared host views
     Sidebar/          # Library sidebar
     FontBrowser/      # Browser view controller plus grid and list child controllers / cells
-    FontDetail/       # Detail panel view controller
-    FontPreview/      # Reusable font preview rendering and the text-style popover
+    FontPreview/      # Detail panel view controller, reusable font preview rendering, and the text-style popover
     Toolbar/          # Custom toolbar controls (e.g. font size)
 
 FontFlowTests/

@@ -1,5 +1,5 @@
 //
-//  FontDetailViewController.swift
+//  FontDetailsViewController.swift
 //  FontFlow
 //
 //  Created on 2026/3/21.
@@ -8,7 +8,7 @@
 import Cocoa
 
 /// Right pane of the split view. Hosts font preview and controls.
-class FontDetailViewController: NSViewController {
+class FontDetailsViewController: NSViewController {
 
     // MARK: - Child VC
 

@@ -41,7 +41,7 @@ class MainSplitViewController: NSSplitViewController {
 
     private let sidebarViewController: SidebarViewController
     private let fontBrowserViewController: FontBrowserViewController
-    private let fontDetailViewController: FontDetailViewController
+    private let fontDetailsViewController: FontDetailsViewController
 
     private var sidebarSplitViewItem: NSSplitViewItem?
     private var listSplitViewItem: NSSplitViewItem?
@@ -61,7 +61,7 @@ class MainSplitViewController: NSSplitViewController {
         fontBrowserViewController = FontBrowserViewController()
         fontBrowserViewController.managedObjectContext = managedObjectContext
 
-        fontDetailViewController = FontDetailViewController()
+        fontDetailsViewController = FontDetailsViewController()
 
         super.init(nibName: nil, bundle: nil)
 
@@ -93,7 +93,7 @@ class MainSplitViewController: NSSplitViewController {
         listItem.minimumThickness = 290
         listSplitViewItem = listItem
 
-        let detailItem = NSSplitViewItem(viewController: fontDetailViewController)
+        let detailItem = NSSplitViewItem(viewController: fontDetailsViewController)
         detailItem.minimumThickness = 250
         detailSplitViewItem = detailItem
 
@@ -216,7 +216,7 @@ extension MainSplitViewController: SidebarSelectionDelegate {
 extension MainSplitViewController: FontBrowserSelectionDelegate {
 
     func fontBrowserDidSelectFonts(_ browser: FontBrowserViewController, fonts: [FontRecord]) {
-        fontDetailViewController.updateFonts(fonts)
+        fontDetailsViewController.updateFonts(fonts)
     }
 }
 
@@ -265,13 +265,13 @@ extension MainSplitViewController: NSToolbarDelegate {
             return item
 
         case .previewScript:
-            return fontDetailViewController.makeScriptToolbarItem(itemIdentifier: .previewScript)
+            return fontDetailsViewController.makeScriptToolbarItem(itemIdentifier: .previewScript)
 
         case .previewFontSize:
-            return fontDetailViewController.makeFontSizeToolbarItem(itemIdentifier: .previewFontSize)
+            return fontDetailsViewController.makeFontSizeToolbarItem(itemIdentifier: .previewFontSize)
 
         case .previewTextStyle:
-            return fontDetailViewController.makePreviewTextStyleToolbarItem(itemIdentifier: .previewTextStyle)
+            return fontDetailsViewController.makePreviewTextStyleToolbarItem(itemIdentifier: .previewTextStyle)
 
         case .detailTrackingSeparator:
             return NSTrackingSeparatorToolbarItem(
