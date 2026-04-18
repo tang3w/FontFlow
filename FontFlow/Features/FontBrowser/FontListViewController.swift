@@ -15,7 +15,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     private enum LayoutMetrics {
         static let minimumColumnWidth: CGFloat = 220
         static let indentationPerLevel: CGFloat = 0
-        static let sectionRowHeight: CGFloat = 28
+        static let sectionRowHeight: CGFloat = 39
         static let fontRowHeight: CGFloat = 24
     }
 
