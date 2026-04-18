@@ -14,19 +14,6 @@ protocol FontBrowserSelectionDelegate: AnyObject {
     func fontBrowserDidSelectFonts(_ browser: FontBrowserViewController, fonts: [FontRecord])
 }
 
-// MARK: - Data Model
-
-/// A family group in the font list.
-class FontFamilyNode {
-    let familyName: String
-    let fonts: [FontRecord]
-
-    init(familyName: String, fonts: [FontRecord]) {
-        self.familyName = familyName
-        self.fonts = fonts
-    }
-}
-
 // MARK: - View Mode
 
 enum FontViewMode: Int {
@@ -34,49 +21,38 @@ enum FontViewMode: Int {
     case list = 1
 }
 
-// MARK: - Diffable Data Source Identifiers
-
-struct FontSectionIdentifier: Hashable {
-    let familyName: String
-}
-
-struct FontItemIdentifier: Hashable {
-    let objectID: NSManagedObjectID
-}
-
 // MARK: - Child View Controller Protocol
 
 protocol FontBrowserChildViewControlling: AnyObject {
-    var onSelectionChanged: (([FontRecord], Bool) -> Void)? { get set }
-    var onSectionToggled: ((String) -> Void)? { get set }
+    var onSelectionChanged: (([FontTypefaceItem], Bool) -> Void)? { get set }
+    var onSectionToggled: ((FontFamilyID) -> Void)? { get set }
     func reloadData(
-        familyNodes: [FontFamilyNode],
-        fontsByObjectID: [NSManagedObjectID: FontRecord],
-        selectedObjectIDs: Set<NSManagedObjectID>,
-        collapsedSections: Set<String>,
+        snapshot: FontBrowserSnapshot,
+        selectedTypefaceIDs: Set<FontTypefaceID>,
+        collapsedFamilyIDs: Set<FontFamilyID>,
         animatingDifferences: Bool,
-        reloadingSections: Set<String>
+        reloadingFamilyIDs: Set<FontFamilyID>
     )
-    func visibleFontObjectIDs() -> Set<NSManagedObjectID>
+    func visibleTypefaceIDs() -> Set<FontTypefaceID>
     func isPrimaryViewFirstResponder() -> Bool
     func focusPrimaryView()
 }
 
 enum FontBrowserSelectionState {
     static func updatedSelection(
-        existingObjectIDs: Set<NSManagedObjectID>,
-        visibleObjectIDs: Set<NSManagedObjectID>,
-        selectedVisibleObjectIDs: Set<NSManagedObjectID>,
+        existingTypefaceIDs: Set<FontTypefaceID>,
+        visibleTypefaceIDs: Set<FontTypefaceID>,
+        selectedVisibleTypefaceIDs: Set<FontTypefaceID>,
         preservesHiddenSelection: Bool
-    ) -> Set<NSManagedObjectID> {
+    ) -> Set<FontTypefaceID> {
         guard preservesHiddenSelection else {
-            return selectedVisibleObjectIDs
+            return selectedVisibleTypefaceIDs
         }
 
-        var updatedObjectIDs = existingObjectIDs
-        updatedObjectIDs.subtract(visibleObjectIDs)
-        updatedObjectIDs.formUnion(selectedVisibleObjectIDs)
-        return updatedObjectIDs
+        var updated = existingTypefaceIDs
+        updated.subtract(visibleTypefaceIDs)
+        updated.formUnion(selectedVisibleTypefaceIDs)
+        return updated
     }
 }
 
@@ -92,11 +68,11 @@ class FontBrowserViewController: NSViewController {
     weak var delegate: FontBrowserSelectionDelegate?
     var managedObjectContext: NSManagedObjectContext!
 
-    private var familyNodes: [FontFamilyNode] = []
-    private var fontsByObjectID: [NSManagedObjectID: FontRecord] = [:]
+    private let snapshotBuilder = FontBrowserSnapshotBuilder()
+    private var snapshot: FontBrowserSnapshot = .empty
     private var currentViewMode: FontViewMode = .grid
-    private var collapsedSections: Set<String> = []
-    private var selectedFontObjectIDs: Set<NSManagedObjectID> = []
+    private var collapsedFamilyIDs: Set<FontFamilyID> = []
+    private var selectedTypefaceIDs: Set<FontTypefaceID> = []
 
     private let childHostingView = AdditionalSafeAreaHostingView(
         additionalInsets: NSEdgeInsets(top: LayoutMetrics.headerContentHeight, left: 0, bottom: 0, right: 0)
@@ -167,12 +143,12 @@ class FontBrowserViewController: NSViewController {
     }
 
     private func wireChild(_ child: NSViewController & FontBrowserChildViewControlling) {
-        child.onSelectionChanged = { [weak self, weak child] fonts, preservesHiddenSelection in
+        child.onSelectionChanged = { [weak self, weak child] typefaces, preservesHiddenSelection in
             guard let self = self, let child = child, self.activeChild === child else { return }
-            self.updateSelection(from: child, selectedFonts: fonts, preservesHiddenSelection: preservesHiddenSelection)
+            self.updateSelection(from: child, selectedTypefaces: typefaces, preservesHiddenSelection: preservesHiddenSelection)
         }
-        child.onSectionToggled = { [weak self] familyName in
-            self?.toggleSection(familyName)
+        child.onSectionToggled = { [weak self] familyID in
+            self?.toggleSection(familyID)
         }
     }
 
@@ -198,30 +174,24 @@ class FontBrowserViewController: NSViewController {
 
     // MARK: - Public
 
-    /// Updates the fetch predicate, re-fetches font records, groups by family, and reloads the active child.
+    /// Updates the fetch predicate, rebuilds the snapshot, and reloads the active child.
     func updatePredicate(_ predicate: NSPredicate?) {
-        let request = FontRecord.fetchRequest()
-        request.predicate = predicate
-        request.sortDescriptors = [
-            NSSortDescriptor(key: "familyName", ascending: true, selector: #selector(NSString.localizedCaseInsensitiveCompare(_:))),
-        ]
-        let records = (try? managedObjectContext.fetch(request)) ?? []
-        familyNodes = buildFamilyNodes(from: records)
-        browserCountView.update(familyCount: familyNodes.count, typefaceCount: records.count)
+        snapshot = snapshotBuilder.build(in: managedObjectContext, predicate: predicate)
+        browserCountView.update(
+            familyCount: snapshot.familyCount,
+            typefaceCount: snapshot.totalTypefaceCount
+        )
 
-        fontsByObjectID = [:]
-        for record in records {
-            fontsByObjectID[record.objectID] = record
-        }
-        selectedFontObjectIDs.formIntersection(Set(records.map { $0.objectID }))
+        // Drop any selected/collapsed identifiers that are no longer in the snapshot.
+        selectedTypefaceIDs.formIntersection(Set(snapshot.typefaceByID.keys))
+        collapsedFamilyIDs.formIntersection(Set(snapshot.familyByID.keys))
 
         activeChild?.reloadData(
-            familyNodes: familyNodes,
-            fontsByObjectID: fontsByObjectID,
-            selectedObjectIDs: selectedFontObjectIDs,
-            collapsedSections: collapsedSections,
+            snapshot: snapshot,
+            selectedTypefaceIDs: selectedTypefaceIDs,
+            collapsedFamilyIDs: collapsedFamilyIDs,
             animatingDifferences: false,
-            reloadingSections: []
+            reloadingFamilyIDs: []
         )
         delegate?.fontBrowserDidSelectFonts(self, fonts: selectedFontRecords())
     }
@@ -236,12 +206,11 @@ class FontBrowserViewController: NSViewController {
         showChild(child)
 
         child.reloadData(
-            familyNodes: familyNodes,
-            fontsByObjectID: fontsByObjectID,
-            selectedObjectIDs: selectedFontObjectIDs,
-            collapsedSections: collapsedSections,
+            snapshot: snapshot,
+            selectedTypefaceIDs: selectedTypefaceIDs,
+            collapsedFamilyIDs: collapsedFamilyIDs,
             animatingDifferences: false,
-            reloadingSections: []
+            reloadingFamilyIDs: []
         )
 
         if shouldRestorePrimaryFocus {
@@ -251,35 +220,34 @@ class FontBrowserViewController: NSViewController {
 
     // MARK: - Section Toggle
 
-    private func toggleSection(_ familyName: String) {
-        if collapsedSections.contains(familyName) {
-            collapsedSections.remove(familyName)
+    private func toggleSection(_ familyID: FontFamilyID) {
+        if collapsedFamilyIDs.contains(familyID) {
+            collapsedFamilyIDs.remove(familyID)
         } else {
-            collapsedSections.insert(familyName)
+            collapsedFamilyIDs.insert(familyID)
         }
 
         activeChild?.reloadData(
-            familyNodes: familyNodes,
-            fontsByObjectID: fontsByObjectID,
-            selectedObjectIDs: selectedFontObjectIDs,
-            collapsedSections: collapsedSections,
+            snapshot: snapshot,
+            selectedTypefaceIDs: selectedTypefaceIDs,
+            collapsedFamilyIDs: collapsedFamilyIDs,
             // Keep section toggles non-animated so pinned headers resize immediately
             // when the scroll view autohides its vertical scroller.
             animatingDifferences: false,
-            reloadingSections: [familyName]
+            reloadingFamilyIDs: [familyID]
         )
     }
 
     private func updateSelection(
         from child: NSViewController & FontBrowserChildViewControlling,
-        selectedFonts: [FontRecord],
+        selectedTypefaces: [FontTypefaceItem],
         preservesHiddenSelection: Bool
     ) {
-        let selectedVisibleObjectIDs = Set(selectedFonts.map { $0.objectID })
-        selectedFontObjectIDs = FontBrowserSelectionState.updatedSelection(
-            existingObjectIDs: selectedFontObjectIDs,
-            visibleObjectIDs: child.visibleFontObjectIDs(),
-            selectedVisibleObjectIDs: selectedVisibleObjectIDs,
+        let selectedVisibleIDs = Set(selectedTypefaces.map { $0.id })
+        selectedTypefaceIDs = FontBrowserSelectionState.updatedSelection(
+            existingTypefaceIDs: selectedTypefaceIDs,
+            visibleTypefaceIDs: child.visibleTypefaceIDs(),
+            selectedVisibleTypefaceIDs: selectedVisibleIDs,
             preservesHiddenSelection: preservesHiddenSelection
         )
 
@@ -287,39 +255,10 @@ class FontBrowserViewController: NSViewController {
     }
 
     private func selectedFontRecords() -> [FontRecord] {
-        familyNodes.flatMap { familyNode in
-            familyNode.fonts.filter { selectedFontObjectIDs.contains($0.objectID) }
-        }
-    }
-
-    // MARK: - Grouping
-
-    private func buildFamilyNodes(from records: [FontRecord]) -> [FontFamilyNode] {
-        let groupedRecords = Dictionary(grouping: records) { record in
-            record.familyName ?? "Unknown"
-        }
-
-        let sortedFamilyNames = groupedRecords.keys.sorted { lhs, rhs in
-            lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
-        }
-
-        return sortedFamilyNames.map { familyName in
-            let sortedFonts = groupedRecords[familyName, default: []].sorted { lhs, rhs in
-                FontFamilyTypefaceSorter.areInIncreasingOrder(
-                    lhsTraits: lhs.fontTraits,
-                    rhsTraits: rhs.fontTraits,
-                    lhsStyleName: lhs.styleName,
-                    rhsStyleName: rhs.styleName,
-                    lhsDisplayName: lhs.displayName,
-                    rhsDisplayName: rhs.displayName,
-                    lhsPostScriptName: lhs.postScriptName,
-                    rhsPostScriptName: rhs.postScriptName,
-                    lhsStableID: lhs.typefaceSortStableID,
-                    rhsStableID: rhs.typefaceSortStableID
-                )
-            }
-
-            return FontFamilyNode(familyName: familyName, fonts: sortedFonts)
+        snapshot.families.flatMap { section in
+            section.typefaces
+                .filter { selectedTypefaceIDs.contains($0.id) }
+                .map { $0.record }
         }
     }
 }

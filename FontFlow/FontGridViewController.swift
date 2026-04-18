@@ -26,14 +26,13 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         static let lastSectionBottomInset: CGFloat = 16
     }
 
-    var onSelectionChanged: (([FontRecord], Bool) -> Void)?
-    var onSectionToggled: ((String) -> Void)?
+    var onSelectionChanged: (([FontTypefaceItem], Bool) -> Void)?
+    var onSectionToggled: ((FontFamilyID) -> Void)?
 
     private var collectionView: NSCollectionView!
-    private var dataSource: NSCollectionViewDiffableDataSource<FontSectionIdentifier, FontItemIdentifier>!
-    private var familyNodes: [FontFamilyNode] = []
-    private var fontsByObjectID: [NSManagedObjectID: FontRecord] = [:]
-    private var collapsedSections: Set<String> = []
+    private var dataSource: NSCollectionViewDiffableDataSource<FontFamilyID, FontTypefaceID>!
+    private var snapshot: FontBrowserSnapshot = .empty
+    private var collapsedFamilyIDs: Set<FontFamilyID> = []
     private var currentColumnCount = 0
     private var lastLayoutWidth: CGFloat = 0
     /// True while a diffable data source apply is in flight, used to suppress
@@ -85,41 +84,38 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     // MARK: - FontBrowserChildViewControlling
 
     func reloadData(
-        familyNodes: [FontFamilyNode],
-        fontsByObjectID: [NSManagedObjectID: FontRecord],
-        selectedObjectIDs: Set<NSManagedObjectID>,
-        collapsedSections: Set<String>,
+        snapshot: FontBrowserSnapshot,
+        selectedTypefaceIDs: Set<FontTypefaceID>,
+        collapsedFamilyIDs: Set<FontFamilyID>,
         animatingDifferences: Bool,
-        reloadingSections: Set<String>
+        reloadingFamilyIDs: Set<FontFamilyID>
     ) {
         loadViewIfNeeded()
 
-        self.familyNodes = familyNodes
-        self.fontsByObjectID = fontsByObjectID
-        self.collapsedSections = collapsedSections
+        self.snapshot = snapshot
+        self.collapsedFamilyIDs = collapsedFamilyIDs
 
-        var snapshot = NSDiffableDataSourceSnapshot<FontSectionIdentifier, FontItemIdentifier>()
+        var diffSnapshot = NSDiffableDataSourceSnapshot<FontFamilyID, FontTypefaceID>()
 
-        for node in familyNodes {
-            let section = FontSectionIdentifier(familyName: node.familyName)
-            snapshot.appendSections([section])
-            if !collapsedSections.contains(node.familyName) {
-                let items = node.fonts.map { FontItemIdentifier(objectID: $0.objectID) }
-                snapshot.appendItems(items, toSection: section)
+        for section in snapshot.families {
+            diffSnapshot.appendSections([section.id])
+            if !collapsedFamilyIDs.contains(section.id) {
+                let items = section.typefaces.map { $0.id }
+                diffSnapshot.appendItems(items, toSection: section.id)
             }
         }
 
-        if !reloadingSections.isEmpty {
-            let sectionsToReload = snapshot.sectionIdentifiers.filter { reloadingSections.contains($0.familyName) }
-            snapshot.reloadSections(sectionsToReload)
+        if !reloadingFamilyIDs.isEmpty {
+            let sectionsToReload = diffSnapshot.sectionIdentifiers.filter { reloadingFamilyIDs.contains($0) }
+            diffSnapshot.reloadSections(sectionsToReload)
         }
 
         reloadGeneration += 1
         let generation = reloadGeneration
         isApplyingReload = true
-        dataSource.apply(snapshot, animatingDifferences: animatingDifferences) { [weak self] in
+        dataSource.apply(diffSnapshot, animatingDifferences: animatingDifferences) { [weak self] in
             guard let self = self, self.reloadGeneration == generation else { return }
-            self.restoreSelection(with: selectedObjectIDs)
+            self.restoreSelection(with: selectedTypefaceIDs)
             self.isApplyingReload = false
             if self.shouldFocusPrimaryViewAfterReload {
                 self.shouldFocusPrimaryViewAfterReload = false
@@ -128,11 +124,11 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         }
     }
 
-    func visibleFontObjectIDs() -> Set<NSManagedObjectID> {
+    func visibleTypefaceIDs() -> Set<FontTypefaceID> {
         Set(
-            familyNodes
-                .filter { !collapsedSections.contains($0.familyName) }
-                .flatMap { $0.fonts.map { $0.objectID } }
+            snapshot.families
+                .filter { !collapsedFamilyIDs.contains($0.id) }
+                .flatMap { $0.typefaces.map { $0.id } }
         )
     }
 
@@ -160,22 +156,17 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     // MARK: - Data Source
 
     private func configureDataSource() {
-        dataSource = NSCollectionViewDiffableDataSource<FontSectionIdentifier, FontItemIdentifier>(
+        dataSource = NSCollectionViewDiffableDataSource<FontFamilyID, FontTypefaceID>(
             collectionView: collectionView
-        ) { [weak self] collectionView, indexPath, itemIdentifier in
-            guard let self = self,
-                  let record = self.fontsByObjectID[itemIdentifier.objectID] else {
-                return collectionView.makeItem(
-                    withIdentifier: FontGridItem.identifier,
-                    for: indexPath
-                )
-            }
-
+        ) { [weak self] collectionView, indexPath, typefaceID in
             let item = collectionView.makeItem(
                 withIdentifier: FontGridItem.identifier,
                 for: indexPath
             ) as! FontGridItem
-            item.configure(with: record)
+
+            if let typefaceItem = self?.snapshot.typefaceByID[typefaceID] {
+                item.configure(with: typefaceItem)
+            }
             return item
         }
 
@@ -189,15 +180,17 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
                 for: indexPath
             ) as! FontSectionHeaderView
 
-            let section = self.dataSource.snapshot().sectionIdentifiers[indexPath.section]
-            let isCollapsed = self.collapsedSections.contains(section.familyName)
-            let totalCount = self.familyNodes.first(where: { $0.familyName == section.familyName })?.fonts.count ?? 0
+            let familyID = self.dataSource.snapshot().sectionIdentifiers[indexPath.section]
+            let isCollapsed = self.collapsedFamilyIDs.contains(familyID)
+            let section = self.snapshot.familyByID[familyID]
+            let displayName = section?.displayName ?? ""
+            let totalCount = section?.typefaceCount ?? 0
             headerView.configure(
-                familyName: section.familyName,
+                familyName: displayName,
                 count: totalCount,
                 isCollapsed: isCollapsed,
                 onToggle: { [weak self] in
-                    self?.onSectionToggled?(section.familyName)
+                    self?.onSectionToggled?(familyID)
                 }
             )
             return headerView
@@ -225,7 +218,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         // Only the final section gets extra bottom space so the last visible row
         // sits above the scroll view's adjusted bottom edge. Earlier sections
         // keep a zero bottom inset to avoid introducing gaps between families.
-        let bottomInset = sectionIndex == familyNodes.indices.last
+        let bottomInset = sectionIndex == snapshot.families.indices.last
             ? LayoutMetrics.lastSectionBottomInset
             : LayoutMetrics.sectionBottomInset
         return Self.makeSection(
@@ -273,9 +266,9 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         collectionView.collectionViewLayout?.invalidateLayout()
     }
 
-    private func restoreSelection(with objectIDs: Set<NSManagedObjectID>) {
-        let indexPaths = Set(objectIDs.compactMap { objectID in
-            dataSource.indexPath(for: FontItemIdentifier(objectID: objectID))
+    private func restoreSelection(with typefaceIDs: Set<FontTypefaceID>) {
+        let indexPaths = Set(typefaceIDs.compactMap { id in
+            dataSource.indexPath(for: id)
         })
         collectionView.deselectAll(nil)
         if !indexPaths.isEmpty {
@@ -398,11 +391,11 @@ extension FontGridViewController: NSCollectionViewDelegate {
     }
 
     private func notifySelectionChanged() {
-        let selectedRecords = collectionView.selectionIndexPaths.compactMap { indexPath -> FontRecord? in
-            guard let itemIdentifier = dataSource.itemIdentifier(for: indexPath) else { return nil }
-            return fontsByObjectID[itemIdentifier.objectID]
+        let selectedTypefaces = collectionView.selectionIndexPaths.compactMap { indexPath -> FontTypefaceItem? in
+            guard let typefaceID = dataSource.itemIdentifier(for: indexPath) else { return nil }
+            return snapshot.typefaceByID[typefaceID]
         }
-        onSelectionChanged?(selectedRecords, preservesHiddenSelectionForCurrentEvent())
+        onSelectionChanged?(selectedTypefaces, preservesHiddenSelectionForCurrentEvent())
     }
 
     private func preservesHiddenSelectionForCurrentEvent() -> Bool {

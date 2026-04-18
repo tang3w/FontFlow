@@ -36,10 +36,10 @@ class FontGridItem: NSCollectionViewItem {
         }
     }
 
-    func configure(with record: FontRecord) {
+    func configure(with item: FontTypefaceItem) {
         let availableWidth = view.bounds.width > 0 ? view.bounds.width : nil
         rootContentView?.configure(
-            with: content(for: record),
+            with: content(for: item),
             availableWidth: availableWidth
         )
     }
@@ -54,11 +54,11 @@ class FontGridItem: NSCollectionViewItem {
         rootContentView?.setSelected(isSelected)
     }
 
-    private func content(for record: FontRecord) -> FontGridContentView.Content {
+    private func content(for item: FontTypefaceItem) -> FontGridContentView.Content {
         FontGridContentView.Content(
-            displayName: record.styleName ?? record.displayName ?? record.postScriptName ?? "Unknown",
+            displayName: item.displayLabel,
             previewText: "Aa",
-            previewFont: FontLoader.font(for: record, size: 48) ?? .systemFont(ofSize: 48)
+            previewFont: FontLoader.font(for: item.record, size: 48) ?? .systemFont(ofSize: 48)
         )
     }
 }

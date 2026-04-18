@@ -37,7 +37,7 @@ final class FontListRowCellView: NSTableCellView {
         fatalError("init(coder:) is not supported")
     }
 
-    func configure(with record: FontRecord) {
-        nameLabel.stringValue = record.styleName ?? record.displayName ?? record.postScriptName ?? "Unknown"
+    func configure(with item: FontTypefaceItem) {
+        nameLabel.stringValue = item.displayLabel
     }
 }

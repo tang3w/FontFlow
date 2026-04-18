@@ -13,45 +13,45 @@ import CoreData
 struct FontBrowserSelectionStateTests {
 
     @Test func preservesHiddenSelectionWhenVisibleSelectionExtends() throws {
-        let objectIDs = try makeObjectIDs(count: 4)
+        let typefaceIDs = try makeTypefaceIDs(count: 4)
 
         let updatedSelection = FontBrowserSelectionState.updatedSelection(
-            existingObjectIDs: Set([objectIDs[0], objectIDs[1], objectIDs[2]]),
-            visibleObjectIDs: Set([objectIDs[1], objectIDs[2], objectIDs[3]]),
-            selectedVisibleObjectIDs: Set([objectIDs[1], objectIDs[2], objectIDs[3]]),
+            existingTypefaceIDs: Set([typefaceIDs[0], typefaceIDs[1], typefaceIDs[2]]),
+            visibleTypefaceIDs: Set([typefaceIDs[1], typefaceIDs[2], typefaceIDs[3]]),
+            selectedVisibleTypefaceIDs: Set([typefaceIDs[1], typefaceIDs[2], typefaceIDs[3]]),
             preservesHiddenSelection: true
         )
 
-        #expect(updatedSelection == Set(objectIDs))
+        #expect(updatedSelection == Set(typefaceIDs))
     }
 
     @Test func replacesSelectionWhenUserDoesNotExtendSelection() throws {
-        let objectIDs = try makeObjectIDs(count: 4)
+        let typefaceIDs = try makeTypefaceIDs(count: 4)
 
         let updatedSelection = FontBrowserSelectionState.updatedSelection(
-            existingObjectIDs: Set([objectIDs[0], objectIDs[1], objectIDs[2]]),
-            visibleObjectIDs: Set([objectIDs[1], objectIDs[2], objectIDs[3]]),
-            selectedVisibleObjectIDs: Set([objectIDs[3]]),
+            existingTypefaceIDs: Set([typefaceIDs[0], typefaceIDs[1], typefaceIDs[2]]),
+            visibleTypefaceIDs: Set([typefaceIDs[1], typefaceIDs[2], typefaceIDs[3]]),
+            selectedVisibleTypefaceIDs: Set([typefaceIDs[3]]),
             preservesHiddenSelection: false
         )
 
-        #expect(updatedSelection == Set([objectIDs[3]]))
+        #expect(updatedSelection == Set([typefaceIDs[3]]))
     }
 
     @Test func keepsHiddenSelectionWhenVisibleItemsAreCommandDeselected() throws {
-        let objectIDs = try makeObjectIDs(count: 3)
+        let typefaceIDs = try makeTypefaceIDs(count: 3)
 
         let updatedSelection = FontBrowserSelectionState.updatedSelection(
-            existingObjectIDs: Set(objectIDs),
-            visibleObjectIDs: Set([objectIDs[1], objectIDs[2]]),
-            selectedVisibleObjectIDs: [],
+            existingTypefaceIDs: Set(typefaceIDs),
+            visibleTypefaceIDs: Set([typefaceIDs[1], typefaceIDs[2]]),
+            selectedVisibleTypefaceIDs: [],
             preservesHiddenSelection: true
         )
 
-        #expect(updatedSelection == Set([objectIDs[0]]))
+        #expect(updatedSelection == Set([typefaceIDs[0]]))
     }
 
-    private func makeObjectIDs(count: Int) throws -> [NSManagedObjectID] {
+    private func makeTypefaceIDs(count: Int) throws -> [FontTypefaceID] {
         let context = try makeInMemoryContext()
         let records = (0..<count).map { index in
             let record = FontRecord(context: context)
@@ -66,7 +66,7 @@ struct FontBrowserSelectionStateTests {
         }
 
         try context.obtainPermanentIDs(for: records)
-        return records.map { $0.objectID }
+        return records.map { FontTypefaceID(objectID: $0.objectID) }
     }
 
     private func makeInMemoryContext() throws -> NSManagedObjectContext {

@@ -19,13 +19,12 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         static let fontRowHeight: CGFloat = 24
     }
 
-    var onSelectionChanged: (([FontRecord], Bool) -> Void)?
-    var onSectionToggled: ((String) -> Void)?
+    var onSelectionChanged: (([FontTypefaceItem], Bool) -> Void)?
+    var onSectionToggled: ((FontFamilyID) -> Void)?
 
     private var outlineView: NSOutlineView!
-    private var familyNodes: [FontFamilyNode] = []
-    private var fontsByObjectID: [NSManagedObjectID: FontRecord] = [:]
-    private var collapsedSections: Set<String> = []
+    private var snapshot: FontBrowserSnapshot = .empty
+    private var collapsedFamilyIDs: Set<FontFamilyID> = []
     private var isApplyingReload = false
     private var isSynchronizingExpansionState = false
 
@@ -65,31 +64,29 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     // MARK: - FontBrowserChildViewControlling
 
     func reloadData(
-        familyNodes: [FontFamilyNode],
-        fontsByObjectID: [NSManagedObjectID: FontRecord],
-        selectedObjectIDs: Set<NSManagedObjectID>,
-        collapsedSections: Set<String>,
+        snapshot: FontBrowserSnapshot,
+        selectedTypefaceIDs: Set<FontTypefaceID>,
+        collapsedFamilyIDs: Set<FontFamilyID>,
         animatingDifferences: Bool,
-        reloadingSections: Set<String>
+        reloadingFamilyIDs: Set<FontFamilyID>
     ) {
         loadViewIfNeeded()
 
-        self.familyNodes = familyNodes
-        self.fontsByObjectID = fontsByObjectID
-        self.collapsedSections = collapsedSections
+        self.snapshot = snapshot
+        self.collapsedFamilyIDs = collapsedFamilyIDs
 
         isApplyingReload = true
         outlineView.reloadData()
         synchronizeExpansionState()
-        restoreSelection(with: selectedObjectIDs)
+        restoreSelection(with: selectedTypefaceIDs)
         isApplyingReload = false
     }
 
-    func visibleFontObjectIDs() -> Set<NSManagedObjectID> {
+    func visibleTypefaceIDs() -> Set<FontTypefaceID> {
         Set(
-            familyNodes
-                .filter { !collapsedSections.contains($0.familyName) }
-                .flatMap { $0.fonts.map { $0.objectID } }
+            snapshot.families
+                .filter { !collapsedFamilyIDs.contains($0.id) }
+                .flatMap { $0.typefaces.map { $0.id } }
         )
     }
 
@@ -115,22 +112,22 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         isSynchronizingExpansionState = true
         defer { isSynchronizingExpansionState = false }
 
-        for familyNode in familyNodes {
-            if collapsedSections.contains(familyNode.familyName) {
-                if outlineView.isItemExpanded(familyNode) {
-                    outlineView.collapseItem(familyNode, collapseChildren: true)
+        for section in snapshot.families {
+            if collapsedFamilyIDs.contains(section.id) {
+                if outlineView.isItemExpanded(section) {
+                    outlineView.collapseItem(section, collapseChildren: true)
                 }
-            } else if !outlineView.isItemExpanded(familyNode) {
-                outlineView.expandItem(familyNode, expandChildren: false)
+            } else if !outlineView.isItemExpanded(section) {
+                outlineView.expandItem(section, expandChildren: false)
             }
         }
     }
 
-    private func restoreSelection(with objectIDs: Set<NSManagedObjectID>) {
-        let rows = objectIDs.reduce(into: IndexSet()) { result, objectID in
-            guard let record = fontsByObjectID[objectID] else { return }
+    private func restoreSelection(with typefaceIDs: Set<FontTypefaceID>) {
+        let rows = typefaceIDs.reduce(into: IndexSet()) { result, typefaceID in
+            guard let item = snapshot.typefaceByID[typefaceID] else { return }
 
-            let row = outlineView.row(forItem: record)
+            let row = outlineView.row(forItem: item)
             if row >= 0 {
                 result.insert(row)
             }
@@ -139,14 +136,14 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         outlineView.selectRowIndexes(rows, byExtendingSelection: false)
     }
 
-    private func selectedFontRecords() -> [FontRecord] {
+    private func selectedTypefaceItems() -> [FontTypefaceItem] {
         outlineView.selectedRowIndexes.compactMap { row in
-            outlineView.item(atRow: row) as? FontRecord
+            outlineView.item(atRow: row) as? FontTypefaceItem
         }
     }
 
     private func notifySelectionChanged() {
-        onSelectionChanged?(selectedFontRecords(), preservesHiddenSelectionForCurrentEvent())
+        onSelectionChanged?(selectedTypefaceItems(), preservesHiddenSelectionForCurrentEvent())
     }
 
     private func preservesHiddenSelectionForCurrentEvent() -> Bool {
@@ -162,9 +159,9 @@ extension FontListViewController: NSOutlineViewDataSource {
     func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
         switch item {
         case nil:
-            return familyNodes.count
-        case let familyNode as FontFamilyNode:
-            return familyNode.fonts.count
+            return snapshot.families.count
+        case let section as FontFamilySection:
+            return section.typefaces.count
         default:
             return 0
         }
@@ -173,17 +170,17 @@ extension FontListViewController: NSOutlineViewDataSource {
     func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
         switch item {
         case nil:
-            return familyNodes[index]
-        case let familyNode as FontFamilyNode:
-            return familyNode.fonts[index]
+            return snapshot.families[index]
+        case let section as FontFamilySection:
+            return section.typefaces[index]
         default:
             fatalError("Unexpected outline item")
         }
     }
 
     func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
-        guard let familyNode = item as? FontFamilyNode else { return false }
-        return !familyNode.fonts.isEmpty
+        guard let section = item as? FontFamilySection else { return false }
+        return !section.typefaces.isEmpty
     }
 }
 
@@ -192,38 +189,38 @@ extension FontListViewController: NSOutlineViewDataSource {
 extension FontListViewController: NSOutlineViewDelegate {
 
     func outlineView(_ outlineView: NSOutlineView, heightOfRowByItem item: Any) -> CGFloat {
-        item is FontFamilyNode ? LayoutMetrics.sectionRowHeight : LayoutMetrics.fontRowHeight
+        item is FontFamilySection ? LayoutMetrics.sectionRowHeight : LayoutMetrics.fontRowHeight
     }
 
     func outlineView(_ outlineView: NSOutlineView, shouldSelectItem item: Any) -> Bool {
-        item is FontRecord
+        item is FontTypefaceItem
     }
 
     func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
-        if let familyNode = item as? FontFamilyNode {
+        if let section = item as? FontFamilySection {
             let cell = outlineView.makeView(
                 withIdentifier: FontListSectionCellView.identifier,
                 owner: self
             ) as? FontListSectionCellView ?? FontListSectionCellView()
             cell.identifier = FontListSectionCellView.identifier
             cell.configure(
-                familyName: familyNode.familyName,
-                count: familyNode.fonts.count,
+                familyName: section.displayName,
+                count: section.typefaceCount,
                 onToggle: { [weak self] in
-                    self?.onSectionToggled?(familyNode.familyName)
+                    self?.onSectionToggled?(section.id)
                 }
             )
             return cell
         }
 
-        guard let record = item as? FontRecord else { return nil }
+        guard let typeface = item as? FontTypefaceItem else { return nil }
 
         let cell = outlineView.makeView(
             withIdentifier: FontListRowCellView.identifier,
             owner: self
         ) as? FontListRowCellView ?? FontListRowCellView()
         cell.identifier = FontListRowCellView.identifier
-        cell.configure(with: record)
+        cell.configure(with: typeface)
         return cell
     }
 
@@ -234,19 +231,19 @@ extension FontListViewController: NSOutlineViewDelegate {
 
     func outlineViewItemDidExpand(_ notification: Notification) {
         guard !isSynchronizingExpansionState,
-              let familyNode = notification.userInfo?["NSObject"] as? FontFamilyNode else {
+              let section = notification.userInfo?["NSObject"] as? FontFamilySection else {
             return
         }
 
-        onSectionToggled?(familyNode.familyName)
+        onSectionToggled?(section.id)
     }
 
     func outlineViewItemDidCollapse(_ notification: Notification) {
         guard !isSynchronizingExpansionState,
-              let familyNode = notification.userInfo?["NSObject"] as? FontFamilyNode else {
+              let section = notification.userInfo?["NSObject"] as? FontFamilySection else {
             return
         }
 
-        onSectionToggled?(familyNode.familyName)
+        onSectionToggled?(section.id)
     }
 }
