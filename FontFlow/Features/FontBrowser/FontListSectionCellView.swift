@@ -22,31 +22,33 @@ final class FontListSectionCellView: NSTableCellView {
         return label
     }()
 
-    private let countLabel: NSTextField = {
-        let label = NSTextField(labelWithString: "")
-        label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .regular)
-        label.textColor = .secondaryLabelColor
-        label.alignment = .right
-        label.translatesAutoresizingMaskIntoConstraints = false
-        label.setContentHuggingPriority(.required, for: .horizontal)
-        label.setContentCompressionResistancePriority(.required, for: .horizontal)
-        return label
+    private let disclosureButton: NSButton = {
+        let button = NSButton(title: "0", target: nil, action: nil)
+        button.bezelStyle = .circular
+        button.showsBorderOnlyWhileMouseInside = true
+        button.imagePosition = .imageTrailing
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.setAccessibilityIdentifier("font-list-section-disclosure-button")
+        return button
     }()
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
 
         addSubview(nameLabel)
-        addSubview(countLabel)
+        addSubview(disclosureButton)
         textField = nameLabel
+
+        disclosureButton.target = self
+        disclosureButton.action = #selector(handleDisclosureButtonPress(_:))
 
         NSLayoutConstraint.activate([
             nameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
             nameLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: countLabel.leadingAnchor, constant: -8),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: disclosureButton.leadingAnchor, constant: -8),
 
-            countLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
-            countLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            disclosureButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            disclosureButton.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }
 
@@ -55,23 +57,46 @@ final class FontListSectionCellView: NSTableCellView {
         fatalError("init(coder:) is not supported")
     }
 
-    func configure(familyName: String, count: Int, onToggle: @escaping () -> Void) {
+    func configure(familyName: String, count: Int, isCollapsed: Bool, onToggle: @escaping () -> Void) {
         nameLabel.stringValue = familyName
-        countLabel.stringValue = String(count)
-        countLabel.toolTip = count == 1 ? "1 typeface" : "\(count) typefaces"
         self.onToggle = onToggle
+        updateDisclosureButton(count: count, collapsed: isCollapsed)
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        nameLabel.stringValue = ""
+        onToggle = nil
+        updateDisclosureButton(count: 0, collapsed: false)
     }
 
     override func mouseDown(with event: NSEvent) {
         // Consume the event so section rows behave like headers rather than selectable items.
     }
 
-    override func mouseUp(with event: NSEvent) {
-        guard event.clickCount == 1 else { return }
-
-        let location = convert(event.locationInWindow, from: nil)
-        guard bounds.contains(location) else { return }
-
+    @objc private func handleDisclosureButtonPress(_ sender: NSButton) {
         onToggle?()
+    }
+
+    private static func badgeTitle(_ string: String) -> NSAttributedString {
+        NSAttributedString(string: string, attributes: [
+            .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium),
+            .foregroundColor: NSColor.secondaryLabelColor
+        ])
+    }
+
+    private func updateDisclosureButton(count: Int, collapsed: Bool) {
+        disclosureButton.attributedTitle = Self.badgeTitle("\(count)")
+
+        let symbolName = collapsed ? "chevron.down" : "chevron.up"
+        let actionLabel = collapsed ? "Expand section" : "Collapse section"
+        let sizeConfig = NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold)
+        let colorConfig = NSImage.SymbolConfiguration(hierarchicalColor: .secondaryLabelColor)
+        let config = sizeConfig.applying(colorConfig)
+        let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: actionLabel)?
+            .withSymbolConfiguration(config)
+        disclosureButton.image = image
+        disclosureButton.toolTip = actionLabel
+        disclosureButton.setAccessibilityLabel(actionLabel)
     }
 }

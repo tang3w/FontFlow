@@ -14,7 +14,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
 
     private enum LayoutMetrics {
         static let minimumColumnWidth: CGFloat = 220
-        static let indentationPerLevel: CGFloat = 14
+        static let indentationPerLevel: CGFloat = 0
         static let sectionRowHeight: CGFloat = 28
         static let fontRowHeight: CGFloat = 24
     }
@@ -36,7 +36,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         scrollView.autohidesScrollers = true
         scrollView.drawsBackground = false
 
-        outlineView = NSOutlineView()
+        outlineView = FontListOutlineView()
         outlineView.headerView = nil
         outlineView.style = .inset
         outlineView.rowSizeStyle = .default
@@ -152,6 +152,17 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     }
 }
 
+// MARK: - FontListOutlineView
+
+private final class FontListOutlineView: NSOutlineView {
+
+    /// Suppresses the built-in disclosure triangle.
+    /// Expansion/collapse is driven manually via the custom disclosure button on `FontListSectionCellView`.
+    override func frameOfOutlineCell(atRow row: Int) -> NSRect {
+        .zero
+    }
+}
+
 // MARK: - NSOutlineViewDataSource
 
 extension FontListViewController: NSOutlineViewDataSource {
@@ -206,6 +217,7 @@ extension FontListViewController: NSOutlineViewDelegate {
             cell.configure(
                 familyName: section.displayName,
                 count: section.typefaceCount,
+                isCollapsed: collapsedFamilyIDs.contains(section.id),
                 onToggle: { [weak self] in
                     self?.onSectionToggled?(section.id)
                 }
@@ -227,23 +239,5 @@ extension FontListViewController: NSOutlineViewDelegate {
     func outlineViewSelectionDidChange(_ notification: Notification) {
         guard !isApplyingReload else { return }
         notifySelectionChanged()
-    }
-
-    func outlineViewItemDidExpand(_ notification: Notification) {
-        guard !isSynchronizingExpansionState,
-              let section = notification.userInfo?["NSObject"] as? FontFamilySection else {
-            return
-        }
-
-        onSectionToggled?(section.id)
-    }
-
-    func outlineViewItemDidCollapse(_ notification: Notification) {
-        guard !isSynchronizingExpansionState,
-              let section = notification.userInfo?["NSObject"] as? FontFamilySection else {
-            return
-        }
-
-        onSectionToggled?(section.id)
     }
 }
