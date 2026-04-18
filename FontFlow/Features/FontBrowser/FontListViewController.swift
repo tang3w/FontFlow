@@ -15,8 +15,6 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     private enum LayoutMetrics {
         static let minimumColumnWidth: CGFloat = 220
         static let indentationPerLevel: CGFloat = 0
-        static let sectionRowHeight: CGFloat = 39
-        static let fontRowHeight: CGFloat = 24
     }
 
     var onSelectionChanged: (([FontTypefaceItem], Bool) -> Void)?
@@ -46,6 +44,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         outlineView.allowsEmptySelection = true
         outlineView.usesAlternatingRowBackgroundColors = true
         outlineView.indentationPerLevel = LayoutMetrics.indentationPerLevel
+        outlineView.usesAutomaticRowHeights = true
         outlineView.dataSource = self
         outlineView.delegate = self
 
@@ -198,11 +197,6 @@ extension FontListViewController: NSOutlineViewDataSource {
 // MARK: - NSOutlineViewDelegate
 
 extension FontListViewController: NSOutlineViewDelegate {
-
-    func outlineView(_ outlineView: NSOutlineView, heightOfRowByItem item: Any) -> CGFloat {
-        item is FontFamilySection ? LayoutMetrics.sectionRowHeight : LayoutMetrics.fontRowHeight
-    }
-
     func outlineView(_ outlineView: NSOutlineView, shouldSelectItem item: Any) -> Bool {
         item is FontTypefaceItem
     }

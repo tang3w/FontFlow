@@ -11,6 +11,13 @@ final class FontListSectionCellView: NSTableCellView {
 
     static let identifier = NSUserInterfaceItemIdentifier("FontListSectionCellView")
 
+    private enum LayoutMetrics {
+        static let leadingInset: CGFloat = 4
+        static let trailingInset: CGFloat = 4
+        static let interItemSpacing: CGFloat = 8
+        static let verticalInset: CGFloat = 10
+    }
+
     var onToggle: (() -> Void)?
 
     private let nameLabel: NSTextField = {
@@ -42,11 +49,12 @@ final class FontListSectionCellView: NSTableCellView {
         disclosureButton.action = #selector(handleDisclosureButtonPress(_:))
 
         NSLayoutConstraint.activate([
-            nameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
-            nameLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
-            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: disclosureButton.leadingAnchor, constant: -8),
+            nameLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: LayoutMetrics.leadingInset),
+            nameLabel.topAnchor.constraint(equalTo: topAnchor, constant: LayoutMetrics.verticalInset),
+            bottomAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: LayoutMetrics.verticalInset),
+            nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: disclosureButton.leadingAnchor, constant: -LayoutMetrics.interItemSpacing),
 
-            disclosureButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            disclosureButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -LayoutMetrics.trailingInset),
             disclosureButton.centerYAnchor.constraint(equalTo: centerYAnchor),
         ])
     }
