@@ -26,6 +26,35 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         static let lastSectionBottomInset: CGFloat = 16
     }
 
+    /// Bundles the bookkeeping needed to detect when the compositional
+    /// layout's `effectiveContentSize.width` changes between section provider
+    /// invocations (e.g. because a data source apply caused the legacy
+    /// vertical scroller to appear or disappear).
+    private struct EffectiveWidthTracker {
+        /// Last width observed by the section provider.
+        var lastWidth: CGFloat = 0
+        /// `false` until the first observation, so the initial pass is not
+        /// misread as a width change.
+        var hasObserved = false
+        /// `true` while a deferred `invalidateLayout` is queued, preventing
+        /// duplicate scheduling when the section provider runs once per
+        /// section in the same pass.
+        var hasPendingInvalidation = false
+
+        /// Returns `true` when the new width is materially different from the
+        /// last observed width and no invalidation is already queued.
+        func shouldScheduleInvalidation(for width: CGFloat) -> Bool {
+            guard hasObserved, !hasPendingInvalidation else { return false }
+            return width != lastWidth
+        }
+
+        /// Records the width seen during the current pass.
+        mutating func record(_ width: CGFloat) {
+            lastWidth = width
+            hasObserved = true
+        }
+    }
+
     var onSelectionChanged: (([FontTypefaceItem], Bool) -> Void)?
     var onSectionToggled: ((FontFamilyID) -> Void)?
     var onFamilySelectionIntent: ((FontFamilyID, FontFamilySelectionIntent) -> Void)?
@@ -37,6 +66,10 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     private var currentSelectedTypefaceIDs: Set<FontTypefaceID> = []
     private var currentColumnCount = 0
     private var lastLayoutWidth: CGFloat = 0
+    /// Tracks the effective content width observed by the compositional
+    /// layout's section provider so a mid-apply scroller toggle can be
+    /// detected and corrected with a deferred `invalidateLayout`.
+    private var effectiveWidthTracker = EffectiveWidthTracker()
     /// True while a diffable data source apply is in flight, used to suppress
     /// delegate-driven selection notifications that would otherwise feed stale
     /// state back to the parent controller.
@@ -246,8 +279,11 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         sectionIndex: Int,
         for environment: NSCollectionLayoutEnvironment
     ) -> NSCollectionLayoutSection {
+        let effectiveWidth = environment.container.effectiveContentSize.width
+        invalidateLayoutIfEffectiveWidthChanged(effectiveWidth)
+
         let contentWidth = max(
-            environment.container.effectiveContentSize.width - (LayoutMetrics.horizontalEdgeInset * 2),
+            effectiveWidth - (LayoutMetrics.horizontalEdgeInset * 2),
             LayoutMetrics.minimumItemWidth
         )
         let columnCount = resolvedColumnCount(for: contentWidth)
@@ -262,6 +298,41 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
             columnCount: columnCount,
             bottomInset: bottomInset
         )
+    }
+
+    /// Detects when `effectiveContentSize.width` differs from the previous
+    /// pass and queues a single deferred `invalidateLayout` so the next pass
+    /// recomputes item widths against the post-scroller-toggle width.
+    ///
+    /// The legacy vertical scroller can appear or disappear partway through a
+    /// data source apply when the new content height crosses the viewport
+    /// boundary. Without this re-invalidation the sections built during the
+    /// current pass keep the pre-toggle item width and render at the wrong
+    /// size until something else (window resize, split view drag) triggers
+    /// another layout pass.
+    ///
+    /// On systems using overlay scrollers (or when the content fits without
+    /// toggling) `effectiveContentSize.width` does not change, so this check
+    /// is a no-op.
+    private func invalidateLayoutIfEffectiveWidthChanged(_ effectiveWidth: CGFloat) {
+        defer { effectiveWidthTracker.record(effectiveWidth) }
+
+        guard effectiveWidthTracker.shouldScheduleInvalidation(for: effectiveWidth) else { return }
+
+        effectiveWidthTracker.hasPendingInvalidation = true
+        // Reset the cached column count so `resolvedColumnCount` recomputes
+        // from scratch on the next pass; otherwise it would prefer the column
+        // count chosen against the stale width.
+        currentColumnCount = 0
+
+        RunLoop.main.perform { [weak self] in
+            guard let self = self else { return }
+            // Clear the flag before invoking `invalidateLayout` so that if
+            // the resulting pass observes yet another width change it can
+            // schedule a follow-up invalidation.
+            self.effectiveWidthTracker.hasPendingInvalidation = false
+            self.collectionView.collectionViewLayout?.invalidateLayout()
+        }
     }
 
     private func resolvedColumnCount(for availableWidth: CGFloat) -> Int {
