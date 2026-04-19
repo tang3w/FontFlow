@@ -59,7 +59,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
     var onSectionToggled: ((FontFamilyID) -> Void)?
     var onFamilySelectionIntent: ((FontFamilyID, FontFamilySelectionIntent) -> Void)?
 
-    private var collectionView: NSCollectionView!
+    private var collectionView: FontGridCollectionView!
     private var dataSource: NSCollectionViewDiffableDataSource<FontFamilyID, FontTypefaceID>!
     private var snapshot: FontBrowserSnapshot = .empty
     private var collapsedFamilyIDs: Set<FontFamilyID> = []
@@ -88,12 +88,15 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
 
-        collectionView = NSCollectionView()
+        collectionView = FontGridCollectionView()
         collectionView.collectionViewLayout = makeLayout()
         collectionView.isSelectable = true
         collectionView.allowsMultipleSelection = true
         collectionView.backgroundColors = [.clear]
         collectionView.delegate = self
+        collectionView.onBackgroundClick = { [weak self] in
+            self?.handleBackgroundClick()
+        }
 
         collectionView.register(
             FontGridItem.self,
@@ -387,6 +390,21 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         view.window?.makeFirstResponder(collectionView)
     }
 
+    /// Invoked by `FontGridCollectionView` when a `mouseDown` reaches the
+    /// collection view itself, meaning the click missed every item and every
+    /// supplementary view. Notifies the parent to clear the entire selection.
+    ///
+    /// The parent owns the authoritative selection (family-header clicks can
+    /// add typefaces that are not represented in `selectionIndexPaths`), so
+    /// it is not sufficient to inspect the local collection view's selection
+    /// here. Always notify with an empty visible selection and
+    /// `preservesHiddenSelection: false` so the parent collapses to nothing.
+    private func handleBackgroundClick() {
+        guard !isApplyingReload else { return }
+        collectionView.deselectAll(nil)
+        onSelectionChanged?([], false)
+    }
+
     private static func makeFallbackSection(for environment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
         let contentWidth = max(
             environment.container.effectiveContentSize.width - (LayoutMetrics.horizontalEdgeInset * 2),
@@ -508,5 +526,26 @@ extension FontGridViewController: NSCollectionViewDelegate {
     private func preservesHiddenSelectionForCurrentEvent() -> Bool {
         let modifierFlags = NSApp.currentEvent?.modifierFlags.intersection(.deviceIndependentFlagsMask) ?? []
         return modifierFlags.contains(.command) || modifierFlags.contains(.shift)
+    }
+}
+
+// MARK: - FontGridCollectionView
+
+/// `NSCollectionView` subclass that reports clicks landing on its background.
+///
+/// `NSCollectionViewItem.view` and supplementary views consume their own
+/// `mouseDown(with:)` and are descendants of the collection view, so a click
+/// whose hit-test resolves back to the collection view itself is, by
+/// definition, on empty space between cells.
+final class FontGridCollectionView: NSCollectionView {
+
+    var onBackgroundClick: (() -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)
+
+        if let superview, hitTest(superview.convert(event.locationInWindow, from: nil)) === self {
+            onBackgroundClick?()
+        }
     }
 }
