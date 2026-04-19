@@ -58,11 +58,9 @@ final class FontGridContentView: NSView, NSCollectionViewElement {
             guard let layer else { return }
 
             if isHighlighted {
-                layer.backgroundColor = NSColor.controlAccentColor.withAlphaComponent(0.10).cgColor
                 layer.borderColor = NSColor.controlAccentColor.cgColor
                 layer.borderWidth = 2
             } else {
-                layer.backgroundColor = NSColor.quaternaryLabelColor.withAlphaComponent(0.06).cgColor
                 layer.borderColor = NSColor.separatorColor.cgColor
                 layer.borderWidth = 1
             }

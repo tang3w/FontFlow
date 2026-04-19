@@ -93,11 +93,11 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
         switch selectionState {
         case .none:
-            layer.backgroundColor = NSColor.unemphasizedSelectedContentBackgroundColor.withAlphaComponent(0.35).cgColor
-            layer.borderColor = NSColor.separatorColor.withAlphaComponent(0.1).cgColor
+            layer.backgroundColor = NSColor.windowBackgroundColor.cgColor
+            layer.borderColor = NSColor.separatorColor.cgColor
             layer.borderWidth = 1
         case .partial:
-            layer.backgroundColor = NSColor.unemphasizedSelectedContentBackgroundColor.withAlphaComponent(0.35).cgColor
+            layer.backgroundColor = NSColor.windowBackgroundColor.cgColor
             layer.borderColor = NSColor.controlAccentColor.cgColor
             layer.borderWidth = 2
         case .full:
