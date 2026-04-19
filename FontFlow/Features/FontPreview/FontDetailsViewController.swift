@@ -100,7 +100,7 @@ class FontDetailsViewController: NSViewController {
     }
 
     private func setupPreviewTextStylePopover() {
-        previewTextStylePopover.behavior = .transient
+        previewTextStylePopover.behavior = .semitransient
         previewTextStylePopover.animates = true
         previewTextStylePopover.contentViewController = previewTextStylePopoverViewController
         previewTextStylePopoverViewController.apply(style: currentPreviewTextStyle)
