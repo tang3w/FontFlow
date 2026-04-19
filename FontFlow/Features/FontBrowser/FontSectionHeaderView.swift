@@ -21,7 +21,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     private var cachedCount: Int = 0
     private var cachedCollapsed: Bool = false
 
-    private let backgroundView: NSView = {
+    private let contentView: NSView = {
         let view = NSView()
         view.translatesAutoresizingMaskIntoConstraints = false
         view.wantsLayer = true
@@ -59,9 +59,9 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         super.init(frame: frameRect)
         wantsLayer = true
 
-        addSubview(backgroundView)
-        backgroundView.addSubview(nameLabel)
-        backgroundView.addSubview(disclosureButton)
+        addSubview(contentView)
+        contentView.addSubview(nameLabel)
+        contentView.addSubview(disclosureButton)
 
         disclosureButton.target = self
         disclosureButton.action = #selector(handleDisclosureButtonPress(_:))
@@ -69,18 +69,18 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         let contentInsets = Self.contentInsets
 
         NSLayoutConstraint.activate([
-            backgroundView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: contentInsets.left),
-            backgroundView.topAnchor.constraint(equalTo: topAnchor, constant: contentInsets.top),
-            backgroundView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -contentInsets.right),
-            backgroundView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -contentInsets.bottom),
+            contentView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: contentInsets.left),
+            contentView.topAnchor.constraint(equalTo: topAnchor, constant: contentInsets.top),
+            contentView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -contentInsets.right),
+            contentView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -contentInsets.bottom),
 
-            nameLabel.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor, constant: contentInsets.left),
-            nameLabel.topAnchor.constraint(equalTo: backgroundView.topAnchor, constant: 10),
-            nameLabel.bottomAnchor.constraint(equalTo: backgroundView.bottomAnchor, constant: -10),
+            nameLabel.leadingAnchor.constraint(equalTo: contentView.leadingAnchor, constant: contentInsets.left),
+            nameLabel.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 10),
+            nameLabel.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -10),
             nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: disclosureButton.leadingAnchor, constant: -10),
 
-            disclosureButton.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -contentInsets.right),
-            disclosureButton.centerYAnchor.constraint(equalTo: backgroundView.centerYAnchor),
+            disclosureButton.trailingAnchor.constraint(equalTo: contentView.trailingAnchor, constant: -contentInsets.right),
+            disclosureButton.centerYAnchor.constraint(equalTo: contentView.centerYAnchor),
         ])
 
         setAccessibilityRole(.button)
@@ -89,7 +89,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
-        guard let layer = backgroundView.layer else { return }
+        guard let layer = contentView.layer else { return }
 
         switch selectionState {
         case .none:
@@ -162,7 +162,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         guard newState != selectionState else { return }
         selectionState = newState
         needsDisplay = true
-        backgroundView.needsDisplay = true
+        contentView.needsDisplay = true
     }
 
     override func prepareForReuse() {
