@@ -178,8 +178,22 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     }
 
     override func mouseDown(with event: NSEvent) {
-        // The disclosure NSButton consumes its own mouse events, so clicks that
-        // reach this method are anywhere on the header except the button.
+        // Intentionally a no-op. Selection is committed in mouseUp so the
+        // gesture matches NSCollectionViewItem's default click-to-select
+        // behavior. We still override mouseDown so AppKit routes the
+        // matching mouseUp back to this view, and so a future drag handler
+        // can take over from here without conflicting with selection.
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        // Only fire when the click ends inside the header's bounds; pressing
+        // and dragging away cancels the selection (and leaves the gesture
+        // free for a future drag implementation).
+        let locationInView = convert(event.locationInWindow, from: nil)
+        guard bounds.contains(locationInView) else { return }
+
+        // The disclosure NSButton consumes its own mouse events, so clicks
+        // that reach this method are anywhere on the header except the button.
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let intent: FontFamilySelectionIntent = (modifiers.contains(.command) || modifiers.contains(.shift))
             ? .toggleAdditive
