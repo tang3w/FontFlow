@@ -18,22 +18,25 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     var onSelect: ((FontFamilySelectionIntent) -> Void)?
 
     private(set) var selectionState: FontFamilySelectionState = .none
+    private var cachedCount: Int = 0
+    private var cachedCollapsed: Bool = false
 
-    private let backgroundEffectView: NSVisualEffectView = {
-        let effectView = NSVisualEffectView()
-        effectView.material = .headerView
-        effectView.blendingMode = .withinWindow
-        effectView.state = .active
-        effectView.translatesAutoresizingMaskIntoConstraints = false
-        effectView.wantsLayer = true
-        effectView.layer?.cornerRadius = 10
-        effectView.layer?.cornerCurve = .continuous
-        effectView.layer?.borderWidth = 1
-        return effectView
+    private let backgroundView: NSView = {
+        let view = NSView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.wantsLayer = true
+        view.layer?.cornerRadius = 10
+        view.layer?.cornerCurve = .continuous
+        view.layer?.borderWidth = 1
+        return view
     }()
 
     private let disclosureButton: NSButton = {
         let button = NSButton(title: "0", target: nil, action: nil)
+        // Swap in a cell that honors the attributed title's foreground color;
+        // the default NSButtonCell for .circular bezels overrides it with the
+        // system control text color.
+        button.cell = AttributedTitleButtonCell(textCell: "0")
         button.bezelStyle = .circular
         button.showsBorderOnlyWhileMouseInside = true
         button.imagePosition = .imageTrailing
@@ -56,9 +59,9 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         super.init(frame: frameRect)
         wantsLayer = true
 
-        addSubview(backgroundEffectView)
-        backgroundEffectView.addSubview(nameLabel)
-        backgroundEffectView.addSubview(disclosureButton)
+        addSubview(backgroundView)
+        backgroundView.addSubview(nameLabel)
+        backgroundView.addSubview(disclosureButton)
 
         disclosureButton.target = self
         disclosureButton.action = #selector(handleDisclosureButtonPress(_:))
@@ -66,18 +69,18 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         let contentInsets = Self.contentInsets
 
         NSLayoutConstraint.activate([
-            backgroundEffectView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: contentInsets.left),
-            backgroundEffectView.topAnchor.constraint(equalTo: topAnchor, constant: contentInsets.top),
-            backgroundEffectView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -contentInsets.right),
-            backgroundEffectView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -contentInsets.bottom),
+            backgroundView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: contentInsets.left),
+            backgroundView.topAnchor.constraint(equalTo: topAnchor, constant: contentInsets.top),
+            backgroundView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -contentInsets.right),
+            backgroundView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -contentInsets.bottom),
 
-            nameLabel.leadingAnchor.constraint(equalTo: backgroundEffectView.leadingAnchor, constant: contentInsets.left),
-            nameLabel.topAnchor.constraint(equalTo: backgroundEffectView.topAnchor, constant: 10),
-            nameLabel.bottomAnchor.constraint(equalTo: backgroundEffectView.bottomAnchor, constant: -10),
+            nameLabel.leadingAnchor.constraint(equalTo: backgroundView.leadingAnchor, constant: contentInsets.left),
+            nameLabel.topAnchor.constraint(equalTo: backgroundView.topAnchor, constant: 10),
+            nameLabel.bottomAnchor.constraint(equalTo: backgroundView.bottomAnchor, constant: -10),
             nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: disclosureButton.leadingAnchor, constant: -10),
 
-            disclosureButton.trailingAnchor.constraint(equalTo: backgroundEffectView.trailingAnchor, constant: -contentInsets.right),
-            disclosureButton.centerYAnchor.constraint(equalTo: backgroundEffectView.centerYAnchor),
+            disclosureButton.trailingAnchor.constraint(equalTo: backgroundView.trailingAnchor, constant: -contentInsets.right),
+            disclosureButton.centerYAnchor.constraint(equalTo: backgroundView.centerYAnchor),
         ])
 
         setAccessibilityRole(.button)
@@ -86,25 +89,26 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
-        guard let layer = backgroundEffectView.layer else { return }
+        guard let layer = backgroundView.layer else { return }
 
         switch selectionState {
         case .none:
-            backgroundEffectView.material = .headerView
-            backgroundEffectView.isEmphasized = false
+            layer.backgroundColor = NSColor.unemphasizedSelectedContentBackgroundColor.withAlphaComponent(0.35).cgColor
             layer.borderColor = NSColor.separatorColor.withAlphaComponent(0.1).cgColor
             layer.borderWidth = 1
         case .partial:
-            backgroundEffectView.material = .headerView
-            backgroundEffectView.isEmphasized = false
+            layer.backgroundColor = NSColor.unemphasizedSelectedContentBackgroundColor.withAlphaComponent(0.35).cgColor
             layer.borderColor = NSColor.controlAccentColor.cgColor
             layer.borderWidth = 2
         case .full:
-            backgroundEffectView.material = .selection
-            backgroundEffectView.isEmphasized = true
-            layer.borderColor = NSColor.controlAccentColor.cgColor
-            layer.borderWidth = 1
+            // Match the standard NSOutlineView (.inset style) selected-row look:
+            // a solid, opaque accent fill with no vibrancy and no border.
+            layer.backgroundColor = NSColor.controlAccentColor.cgColor
+            layer.borderColor = NSColor.clear.cgColor
+            layer.borderWidth = 0
         }
+
+        applyForegroundAppearance()
     }
 
     @available(*, unavailable)
@@ -112,11 +116,25 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         fatalError("init(coder:) is not supported")
     }
 
-    private static func badgeTitle(_ string: String) -> NSAttributedString {
+    private static func badgeTitle(_ string: String, foregroundColor: NSColor) -> NSAttributedString {
         NSAttributedString(string: string, attributes: [
             .font: NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium),
-            .foregroundColor: NSColor.secondaryLabelColor
+            .foregroundColor: foregroundColor
         ])
+    }
+
+    private var foregroundTintColor: NSColor {
+        selectionState == .full ? .alternateSelectedControlTextColor : .headerTextColor
+    }
+
+    private var secondaryForegroundTintColor: NSColor {
+        selectionState == .full ? .alternateSelectedControlTextColor : .secondaryLabelColor
+    }
+
+    private func applyForegroundAppearance() {
+        nameLabel.textColor = foregroundTintColor
+        updateDisclosureBadge()
+        updateDisclosureChevron(collapsed: cachedCollapsed)
     }
 
     func configure(
@@ -130,8 +148,13 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         nameLabel.stringValue = familyName
         self.onToggle = onToggle
         self.onSelect = onSelect
+        cachedCount = count
+        cachedCollapsed = isCollapsed
         updateSelectionState(selectionState)
-        updateDisclosureButton(count: count, collapsed: isCollapsed)
+        updateDisclosureBadge()
+        updateDisclosureChevron(collapsed: isCollapsed)
+        // Ensure foreground colors reflect the (possibly unchanged) selection state.
+        applyForegroundAppearance()
         setAccessibilityLabel("Select family \(familyName)")
     }
 
@@ -139,7 +162,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         guard newState != selectionState else { return }
         selectionState = newState
         needsDisplay = true
-        backgroundEffectView.needsDisplay = true
+        backgroundView.needsDisplay = true
     }
 
     override func prepareForReuse() {
@@ -147,8 +170,11 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         nameLabel.stringValue = ""
         onToggle = nil
         onSelect = nil
+        cachedCount = 0
+        cachedCollapsed = false
         updateSelectionState(.none)
-        updateDisclosureButton(count: 0, collapsed: false)
+        updateDisclosureBadge()
+        updateDisclosureChevron(collapsed: false)
     }
 
     override func mouseDown(with event: NSEvent) {
@@ -165,18 +191,44 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         onToggle?()
     }
 
-    private func updateDisclosureButton(count: Int, collapsed: Bool) {
-        disclosureButton.attributedTitle = Self.badgeTitle("\(count)")
+    private func updateDisclosureBadge() {
+        disclosureButton.attributedTitle = Self.badgeTitle(
+            "\(cachedCount)",
+            foregroundColor: secondaryForegroundTintColor
+        )
+    }
 
+    private func updateDisclosureChevron(collapsed: Bool) {
         let symbolName = collapsed ? "chevron.down" : "chevron.up"
         let actionLabel = collapsed ? "Expand section" : "Collapse section"
         let sizeConfig = NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold)
-        let colorConfig = NSImage.SymbolConfiguration(hierarchicalColor: .secondaryLabelColor)
+        let colorConfig = NSImage.SymbolConfiguration(hierarchicalColor: secondaryForegroundTintColor)
         let config = sizeConfig.applying(colorConfig)
         let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: actionLabel)?
             .withSymbolConfiguration(config)
         disclosureButton.image = image
         disclosureButton.toolTip = actionLabel
         disclosureButton.setAccessibilityLabel(actionLabel)
+    }
+}
+
+/// `NSButtonCell` subclass that draws `attributedTitle` verbatim instead of
+/// letting the default cell re-color the title with the system control text
+/// color. This is required so the section header's count badge can adopt
+/// `alternateSelectedControlTextColor` when the header is fully selected.
+private final class AttributedTitleButtonCell: NSButtonCell {
+    override func drawTitle(_ title: NSAttributedString, withFrame frame: NSRect, in controlView: NSView) -> NSRect {
+        let bounding = title.boundingRect(
+            with: frame.size,
+            options: [.usesLineFragmentOrigin, .usesFontLeading]
+        )
+        let drawRect = NSRect(
+            x: frame.midX - bounding.width / 2,
+            y: frame.midY - bounding.height / 2,
+            width: bounding.width,
+            height: bounding.height
+        )
+        title.draw(with: drawRect, options: [.usesLineFragmentOrigin, .usesFontLeading])
+        return drawRect
     }
 }
