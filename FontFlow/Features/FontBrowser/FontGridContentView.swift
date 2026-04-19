@@ -129,6 +129,21 @@ final class FontGridContentView: NSView, NSCollectionViewElement {
         updateNameLabelPreferredMaxLayoutWidth(for: bounds.width)
     }
 
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // hitTest receives a point in the superview's coordinate system.
+        let localPoint = convert(point, from: superview)
+
+        // Only the card and the name label count as the item itself.
+        // Any click in the surrounding blank area passes through to the
+        // collection view so it can handle background clicks (deselect,
+        // rubber-band selection, etc.).
+        if previewCardView.frame.contains(localPoint)
+            || nameLabel.frame.contains(localPoint) {
+            return super.hitTest(point)
+        }
+        return nil
+    }
+
     func configure(with content: Content, availableWidth: CGFloat? = nil) {
         self.content = content
         previewLabel.stringValue = content.previewText
