@@ -19,6 +19,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
 
     var onSelectionChanged: (([FontTypefaceItem], Bool) -> Void)?
     var onSectionToggled: ((FontFamilyID) -> Void)?
+    var onFamilySelectionIntent: ((FontFamilyID, FontFamilySelectionIntent) -> Void)?
 
     private var outlineView: NSOutlineView!
     private var snapshot: FontBrowserSnapshot = .empty
@@ -103,6 +104,11 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     func focusPrimaryView() {
         loadViewIfNeeded()
         view.window?.makeFirstResponder(outlineView)
+    }
+
+    func refreshFamilyHeaders(for familyIDs: Set<FontFamilyID>, selectedTypefaceIDs: Set<FontTypefaceID>) {
+        // List-view header selection parity is tracked as a follow-up. Item-level
+        // selection changes in the list do not currently drive family-header visuals.
     }
 
     // MARK: - Helpers

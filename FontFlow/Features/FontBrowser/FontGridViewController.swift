@@ -28,11 +28,13 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
 
     var onSelectionChanged: (([FontTypefaceItem], Bool) -> Void)?
     var onSectionToggled: ((FontFamilyID) -> Void)?
+    var onFamilySelectionIntent: ((FontFamilyID, FontFamilySelectionIntent) -> Void)?
 
     private var collectionView: NSCollectionView!
     private var dataSource: NSCollectionViewDiffableDataSource<FontFamilyID, FontTypefaceID>!
     private var snapshot: FontBrowserSnapshot = .empty
     private var collapsedFamilyIDs: Set<FontFamilyID> = []
+    private var currentSelectedTypefaceIDs: Set<FontTypefaceID> = []
     private var currentColumnCount = 0
     private var lastLayoutWidth: CGFloat = 0
     /// True while a diffable data source apply is in flight, used to suppress
@@ -94,6 +96,7 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
 
         self.snapshot = snapshot
         self.collapsedFamilyIDs = collapsedFamilyIDs
+        self.currentSelectedTypefaceIDs = selectedTypefaceIDs
 
         var diffSnapshot = NSDiffableDataSourceSnapshot<FontFamilyID, FontTypefaceID>()
 
@@ -153,6 +156,30 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
         focusPrimaryViewIfPossible()
     }
 
+    func refreshFamilyHeaders(for familyIDs: Set<FontFamilyID>, selectedTypefaceIDs: Set<FontTypefaceID>) {
+        loadViewIfNeeded()
+        currentSelectedTypefaceIDs = selectedTypefaceIDs
+        guard !familyIDs.isEmpty else { return }
+
+        let currentSectionIdentifiers = dataSource.snapshot().sectionIdentifiers
+        for familyID in familyIDs {
+            guard let sectionIndex = currentSectionIdentifiers.firstIndex(of: familyID) else { continue }
+            let indexPath = IndexPath(item: 0, section: sectionIndex)
+            guard let headerView = collectionView.supplementaryView(
+                forElementKind: FontSectionHeaderView.elementKind,
+                at: indexPath
+            ) as? FontSectionHeaderView else { continue }
+
+            let section = snapshot.familyByID[familyID]
+            let typefaceIDs = section?.typefaces.map { $0.id } ?? []
+            let newState = FontFamilySelectionState.resolve(
+                typefaceIDs: typefaceIDs,
+                selected: selectedTypefaceIDs
+            )
+            headerView.updateSelectionState(newState)
+        }
+    }
+
     // MARK: - Data Source
 
     private func configureDataSource() {
@@ -185,12 +212,21 @@ class FontGridViewController: NSViewController, FontBrowserChildViewControlling 
             let section = self.snapshot.familyByID[familyID]
             let displayName = section?.displayName ?? ""
             let totalCount = section?.typefaceCount ?? 0
+            let typefaceIDs = section?.typefaces.map { $0.id } ?? []
+            let selectionState = FontFamilySelectionState.resolve(
+                typefaceIDs: typefaceIDs,
+                selected: self.currentSelectedTypefaceIDs
+            )
             headerView.configure(
                 familyName: displayName,
                 count: totalCount,
                 isCollapsed: isCollapsed,
+                selectionState: selectionState,
                 onToggle: { [weak self] in
                     self?.onSectionToggled?(familyID)
+                },
+                onSelect: { [weak self] intent in
+                    self?.onFamilySelectionIntent?(familyID, intent)
                 }
             )
             return headerView

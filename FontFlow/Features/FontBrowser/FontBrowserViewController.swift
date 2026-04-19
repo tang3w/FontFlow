@@ -26,6 +26,7 @@ enum FontViewMode: Int {
 protocol FontBrowserChildViewControlling: AnyObject {
     var onSelectionChanged: (([FontTypefaceItem], Bool) -> Void)? { get set }
     var onSectionToggled: ((FontFamilyID) -> Void)? { get set }
+    var onFamilySelectionIntent: ((FontFamilyID, FontFamilySelectionIntent) -> Void)? { get set }
     func reloadData(
         snapshot: FontBrowserSnapshot,
         selectedTypefaceIDs: Set<FontTypefaceID>,
@@ -36,6 +37,37 @@ protocol FontBrowserChildViewControlling: AnyObject {
     func visibleTypefaceIDs() -> Set<FontTypefaceID>
     func isPrimaryViewFirstResponder() -> Bool
     func focusPrimaryView()
+    func refreshFamilyHeaders(for familyIDs: Set<FontFamilyID>, selectedTypefaceIDs: Set<FontTypefaceID>)
+}
+
+// MARK: - Family Selection
+
+enum FontFamilySelectionState {
+    case none
+    case partial
+    case full
+
+    static func resolve(
+        typefaceIDs: [FontTypefaceID],
+        selected: Set<FontTypefaceID>
+    ) -> FontFamilySelectionState {
+        guard !typefaceIDs.isEmpty else { return .none }
+        var hit = 0
+        for id in typefaceIDs where selected.contains(id) {
+            hit += 1
+        }
+        if hit == 0 { return .none }
+        if hit == typefaceIDs.count { return .full }
+        return .partial
+    }
+}
+
+enum FontFamilySelectionIntent {
+    /// Plain (no-modifier) header click. Replaces selection with the full family.
+    /// If the family is already fully selected, this is a no-op (other selection preserved).
+    case select
+    /// Cmd/Shift header click. Toggles: full -> none, otherwise unions the family in.
+    case toggleAdditive
 }
 
 enum FontBrowserSelectionState {
@@ -150,6 +182,10 @@ class FontBrowserViewController: NSViewController {
         child.onSectionToggled = { [weak self] familyID in
             self?.toggleSection(familyID)
         }
+        child.onFamilySelectionIntent = { [weak self, weak child] familyID, intent in
+            guard let self = self, let child = child, self.activeChild === child else { return }
+            self.applyFamilySelectionIntent(familyID, intent: intent)
+        }
     }
 
     private func showChild(_ child: NSViewController & FontBrowserChildViewControlling) {
@@ -244,6 +280,7 @@ class FontBrowserViewController: NSViewController {
         preservesHiddenSelection: Bool
     ) {
         let selectedVisibleIDs = Set(selectedTypefaces.map { $0.id })
+        let previousSelection = selectedTypefaceIDs
         selectedTypefaceIDs = FontBrowserSelectionState.updatedSelection(
             existingTypefaceIDs: selectedTypefaceIDs,
             visibleTypefaceIDs: child.visibleTypefaceIDs(),
@@ -251,8 +288,84 @@ class FontBrowserViewController: NSViewController {
             preservesHiddenSelection: preservesHiddenSelection
         )
 
+        reloadHeadersForChangedFamilies(previous: previousSelection, current: selectedTypefaceIDs, child: child)
         delegate?.fontBrowserDidSelectFonts(self, fonts: selectedFontRecords())
     }
+
+    // MARK: - Family Selection Intent
+
+    private func applyFamilySelectionIntent(_ familyID: FontFamilyID, intent: FontFamilySelectionIntent) {
+        guard let section = snapshot.familyByID[familyID] else { return }
+        let familyIDs = section.typefaces.map { $0.id }
+        guard !familyIDs.isEmpty else { return }
+        let familySet = Set(familyIDs)
+        let currentState = FontFamilySelectionState.resolve(
+            typefaceIDs: familyIDs,
+            selected: selectedTypefaceIDs
+        )
+
+        let previousSelection = selectedTypefaceIDs
+
+        switch intent {
+        case .select:
+            // Plain click on a fully selected family is a no-op so that other
+            // selection is preserved (per spec). Otherwise replace the current
+            // selection with the family.
+            if currentState == .full {
+                return
+            }
+            selectedTypefaceIDs = familySet
+        case .toggleAdditive:
+            if currentState == .full {
+                selectedTypefaceIDs.subtract(familySet)
+            } else {
+                selectedTypefaceIDs.formUnion(familySet)
+            }
+        }
+
+        guard selectedTypefaceIDs != previousSelection else { return }
+
+        let changedFamilies = familiesWithChangedSelection(
+            previous: previousSelection,
+            current: selectedTypefaceIDs
+        )
+
+        activeChild?.reloadData(
+            snapshot: snapshot,
+            selectedTypefaceIDs: selectedTypefaceIDs,
+            collapsedFamilyIDs: collapsedFamilyIDs,
+            animatingDifferences: false,
+            reloadingFamilyIDs: changedFamilies
+        )
+        delegate?.fontBrowserDidSelectFonts(self, fonts: selectedFontRecords())
+    }
+
+    private func familiesWithChangedSelection(
+        previous: Set<FontTypefaceID>,
+        current: Set<FontTypefaceID>
+    ) -> Set<FontFamilyID> {
+        var result: Set<FontFamilyID> = []
+        for section in snapshot.families {
+            let ids = section.typefaces.map { $0.id }
+            let before = FontFamilySelectionState.resolve(typefaceIDs: ids, selected: previous)
+            let after = FontFamilySelectionState.resolve(typefaceIDs: ids, selected: current)
+            if before != after {
+                result.insert(section.id)
+            }
+        }
+        return result
+    }
+
+    private func reloadHeadersForChangedFamilies(
+        previous: Set<FontTypefaceID>,
+        current: Set<FontTypefaceID>,
+        child: NSViewController & FontBrowserChildViewControlling
+    ) {
+        let changed = familiesWithChangedSelection(previous: previous, current: current)
+        guard !changed.isEmpty else { return }
+        child.refreshFamilyHeaders(for: changed, selectedTypefaceIDs: current)
+    }
+
 
     private func selectedFontRecords() -> [FontRecord] {
         snapshot.families.flatMap { section in

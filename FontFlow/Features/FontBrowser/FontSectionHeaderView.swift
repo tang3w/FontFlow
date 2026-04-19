@@ -15,6 +15,9 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     static let contentInsets = NSEdgeInsets(top: 10, left: 10, bottom: 0, right: 10)
 
     var onToggle: (() -> Void)?
+    var onSelect: ((FontFamilySelectionIntent) -> Void)?
+
+    private(set) var selectionState: FontFamilySelectionState = .none
 
     private let backgroundEffectView: NSVisualEffectView = {
         let effectView = NSVisualEffectView()
@@ -76,12 +79,32 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
             disclosureButton.trailingAnchor.constraint(equalTo: backgroundEffectView.trailingAnchor, constant: -contentInsets.right),
             disclosureButton.centerYAnchor.constraint(equalTo: backgroundEffectView.centerYAnchor),
         ])
+
+        setAccessibilityRole(.button)
     }
 
     override var wantsUpdateLayer: Bool { true }
 
     override func updateLayer() {
-        backgroundEffectView.layer?.borderColor = NSColor.separatorColor.withAlphaComponent(0.1).cgColor
+        guard let layer = backgroundEffectView.layer else { return }
+
+        switch selectionState {
+        case .none:
+            backgroundEffectView.material = .headerView
+            backgroundEffectView.isEmphasized = false
+            layer.borderColor = NSColor.separatorColor.withAlphaComponent(0.1).cgColor
+            layer.borderWidth = 1
+        case .partial:
+            backgroundEffectView.material = .headerView
+            backgroundEffectView.isEmphasized = false
+            layer.borderColor = NSColor.controlAccentColor.cgColor
+            layer.borderWidth = 2
+        case .full:
+            backgroundEffectView.material = .selection
+            backgroundEffectView.isEmphasized = true
+            layer.borderColor = NSColor.controlAccentColor.cgColor
+            layer.borderWidth = 1
+        }
     }
 
     @available(*, unavailable)
@@ -96,17 +119,46 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         ])
     }
 
-    func configure(familyName: String, count: Int, isCollapsed: Bool, onToggle: @escaping () -> Void) {
+    func configure(
+        familyName: String,
+        count: Int,
+        isCollapsed: Bool,
+        selectionState: FontFamilySelectionState,
+        onToggle: @escaping () -> Void,
+        onSelect: @escaping (FontFamilySelectionIntent) -> Void
+    ) {
         nameLabel.stringValue = familyName
         self.onToggle = onToggle
+        self.onSelect = onSelect
+        updateSelectionState(selectionState)
         updateDisclosureButton(count: count, collapsed: isCollapsed)
+        setAccessibilityLabel("Select family \(familyName)")
+    }
+
+    func updateSelectionState(_ newState: FontFamilySelectionState) {
+        guard newState != selectionState else { return }
+        selectionState = newState
+        needsDisplay = true
+        backgroundEffectView.needsDisplay = true
     }
 
     override func prepareForReuse() {
         super.prepareForReuse()
         nameLabel.stringValue = ""
         onToggle = nil
+        onSelect = nil
+        updateSelectionState(.none)
         updateDisclosureButton(count: 0, collapsed: false)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        // The disclosure NSButton consumes its own mouse events, so clicks that
+        // reach this method are anywhere on the header except the button.
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let intent: FontFamilySelectionIntent = (modifiers.contains(.command) || modifiers.contains(.shift))
+            ? .toggleAdditive
+            : .select
+        onSelect?(intent)
     }
 
     @objc private func handleDisclosureButtonPress(_ sender: NSButton) {
