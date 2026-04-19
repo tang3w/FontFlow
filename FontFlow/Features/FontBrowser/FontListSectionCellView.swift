@@ -46,7 +46,7 @@ final class FontListSectionCellView: NSTableCellView {
         let imageView = NSImageView()
         let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
         imageView.image = NSImage(
-            systemSymbolName: "square.stack.3d.down.forward.fill",
+            systemSymbolName: "square.stack.3d.up.fill",
             accessibilityDescription: nil
         )?.withSymbolConfiguration(config)
         imageView.contentTintColor = .secondaryLabelColor
