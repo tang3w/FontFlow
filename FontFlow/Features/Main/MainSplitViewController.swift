@@ -256,7 +256,7 @@ extension MainSplitViewController: NSToolbarDelegate {
         case .viewMode:
             let item = NSToolbarItemGroup(itemIdentifier: .viewMode, images: [
                 NSImage(systemSymbolName: "square.grid.2x2", accessibilityDescription: "Grid")!,
-                NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "List")!,
+                NSImage(systemSymbolName: "list.triangle", accessibilityDescription: "List")!,
             ], selectionMode: .selectOne, labels: ["Grid", "List"], target: self, action: #selector(viewModeChanged(_:)))
             item.selectedIndex = 0
             item.label = "View Mode"
