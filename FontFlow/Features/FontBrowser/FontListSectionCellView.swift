@@ -17,6 +17,7 @@ final class FontListSectionCellView: NSTableCellView {
         static let interItemSpacing: CGFloat = 4
         static let verticalInset: CGFloat = 4
         static let disclosureButtonWidth: CGFloat = 16
+        static let iconWidth: CGFloat = 18
     }
 
     var onToggle: (() -> Void)?
@@ -41,6 +42,18 @@ final class FontListSectionCellView: NSTableCellView {
         return button
     }()
 
+    private let iconView: NSImageView = {
+        let imageView = NSImageView()
+        let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .regular)
+        imageView.image = NSImage(
+            systemSymbolName: "square.stack.3d.down.forward.fill",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(config)
+        imageView.contentTintColor = .secondaryLabelColor
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        return imageView
+    }()
+
     private let countLabel: NSTextField = {
         let label = NSTextField(labelWithString: "")
         label.font = .monospacedDigitSystemFont(ofSize: 11, weight: .medium)
@@ -54,6 +67,7 @@ final class FontListSectionCellView: NSTableCellView {
         super.init(frame: frameRect)
 
         addSubview(disclosureButton)
+        addSubview(iconView)
         addSubview(nameLabel)
         addSubview(countLabel)
 
@@ -68,7 +82,11 @@ final class FontListSectionCellView: NSTableCellView {
             disclosureButton.widthAnchor.constraint(equalToConstant: LayoutMetrics.disclosureButtonWidth),
             disclosureButton.heightAnchor.constraint(equalTo: heightAnchor),
 
-            nameLabel.leadingAnchor.constraint(equalTo: disclosureButton.trailingAnchor, constant: LayoutMetrics.interItemSpacing),
+            iconView.leadingAnchor.constraint(equalTo: disclosureButton.trailingAnchor, constant: LayoutMetrics.interItemSpacing),
+            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: LayoutMetrics.iconWidth),
+
+            nameLabel.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: LayoutMetrics.interItemSpacing),
             nameLabel.topAnchor.constraint(equalTo: topAnchor, constant: LayoutMetrics.verticalInset),
             bottomAnchor.constraint(equalTo: nameLabel.bottomAnchor, constant: LayoutMetrics.verticalInset),
             nameLabel.trailingAnchor.constraint(lessThanOrEqualTo: countLabel.leadingAnchor, constant: -LayoutMetrics.interItemSpacing),
