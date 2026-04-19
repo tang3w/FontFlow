@@ -177,6 +177,15 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         updateDisclosureChevron(collapsed: false)
     }
 
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // Only claim hits that land within the visible content view. Points in
+        // the surrounding insets fall through to the collection view so the
+        // user can start a marquee drag-to-select gesture there.
+        let pointInContent = contentView.convert(point, from: superview)
+        guard contentView.bounds.contains(pointInContent) else { return nil }
+        return super.hitTest(point)
+    }
+
     override func mouseDown(with event: NSEvent) {
         // Intentionally a no-op. Selection is committed in mouseUp so the
         // gesture matches NSCollectionViewItem's default click-to-select
@@ -186,11 +195,11 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     }
 
     override func mouseUp(with event: NSEvent) {
-        // Only fire when the click ends inside the header's bounds; pressing
+        // Only fire when the click ends inside the content view; pressing
         // and dragging away cancels the selection (and leaves the gesture
         // free for a future drag implementation).
-        let locationInView = convert(event.locationInWindow, from: nil)
-        guard bounds.contains(locationInView) else { return }
+        let locationInContent = contentView.convert(event.locationInWindow, from: nil)
+        guard contentView.bounds.contains(locationInContent) else { return }
 
         // The disclosure NSButton consumes its own mouse events, so clicks
         // that reach this method are anywhere on the header except the button.
