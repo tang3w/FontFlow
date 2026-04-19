@@ -82,7 +82,7 @@ final class FontListSectionCellView: NSTableCellView {
             disclosureButton.widthAnchor.constraint(equalToConstant: LayoutMetrics.disclosureButtonWidth),
             disclosureButton.heightAnchor.constraint(equalTo: heightAnchor),
 
-            iconView.leadingAnchor.constraint(equalTo: disclosureButton.trailingAnchor, constant: LayoutMetrics.interItemSpacing),
+            iconView.leadingAnchor.constraint(equalTo: disclosureButton.trailingAnchor),
             iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
             iconView.widthAnchor.constraint(equalToConstant: LayoutMetrics.iconWidth),
 

@@ -12,7 +12,7 @@ final class FontListRowCellView: NSTableCellView {
     static let identifier = NSUserInterfaceItemIdentifier("FontListRowCellView")
 
     private enum LayoutMetrics {
-        static let leadingInset: CGFloat = 38
+        static let leadingInset: CGFloat = 34
         static let trailingInset: CGFloat = 4
         static let verticalInset: CGFloat = 4
         static let interItemSpacing: CGFloat = 4
