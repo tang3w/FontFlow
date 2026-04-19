@@ -544,6 +544,14 @@ final class FontGridCollectionView: NSCollectionView {
     override func mouseDown(with event: NSEvent) {
         super.mouseDown(with: event)
 
+        // Preserve the existing selection when the user holds Cmd or Shift,
+        // so modifier-extended marquee drags starting on the background do
+        // not wipe out what the user is trying to extend.
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if modifiers.contains(.command) || modifiers.contains(.shift) {
+            return
+        }
+
         if let superview, hitTest(superview.convert(event.locationInWindow, from: nil)) === self {
             onBackgroundClick?()
         }
