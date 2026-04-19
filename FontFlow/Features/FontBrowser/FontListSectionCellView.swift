@@ -86,6 +86,7 @@ final class FontListSectionCellView: NSTableCellView {
     func configure(familyName: String, count: Int, isCollapsed: Bool, onToggle: @escaping () -> Void) {
         nameLabel.stringValue = familyName
         countLabel.stringValue = "\(count)"
+        countLabel.toolTip = "\(count) \(count == 1 ? "typeface" : "typefaces")"
         self.onToggle = onToggle
         updateDisclosureButton(collapsed: isCollapsed)
     }
@@ -94,6 +95,7 @@ final class FontListSectionCellView: NSTableCellView {
         super.prepareForReuse()
         nameLabel.stringValue = ""
         countLabel.stringValue = ""
+        countLabel.toolTip = nil
         onToggle = nil
         updateDisclosureButton(collapsed: false)
     }
