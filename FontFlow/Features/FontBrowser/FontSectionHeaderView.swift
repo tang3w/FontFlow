@@ -47,7 +47,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
 
     private let nameLabel: NSTextField = {
         let label = NSTextField(labelWithString: "")
-        label.font = .systemFont(ofSize: 15, weight: .semibold)
+        label.font = .systemFont(ofSize: 13, weight: .semibold)
         label.textColor = .headerTextColor
         label.lineBreakMode = .byTruncatingTail
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -215,7 +215,7 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     private func updateDisclosureChevron(collapsed: Bool) {
         let symbolName = collapsed ? "chevron.down" : "chevron.up"
         let actionLabel = collapsed ? "Expand section" : "Collapse section"
-        let sizeConfig = NSImage.SymbolConfiguration(pointSize: 9, weight: .semibold)
+        let sizeConfig = NSImage.SymbolConfiguration(pointSize: 9, weight: .bold)
         let colorConfig = NSImage.SymbolConfiguration(hierarchicalColor: secondaryForegroundTintColor)
         let config = sizeConfig.applying(colorConfig)
         let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: actionLabel)?
