@@ -136,11 +136,29 @@ final class FontListSectionCellView: NSTableCellView {
         updateDisclosureButton(collapsed: false)
     }
 
+    override var backgroundStyle: NSView.BackgroundStyle {
+        didSet {
+            guard backgroundStyle != oldValue else { return }
+            applySelectionTint()
+        }
+    }
+
     @objc private func handleDisclosureButtonPress(_ sender: NSButton) {
         onToggle?()
     }
 
     private func applySelectionTint() {
+        // When the row is drawn against the system selection background
+        // (either via a `.full` family selection or an interim drag-range
+        // selection that covers a `.partial` family header), defer to the
+        // outline view's native highlight by using the standard foreground
+        // colors so they read correctly against the selection fill.
+        if backgroundStyle == .emphasized {
+            iconView.contentTintColor = .secondaryLabelColor
+            nameLabel.textColor = .labelColor
+            return
+        }
+
         switch selectionState {
         case .partial:
             iconView.contentTintColor = .controlAccentColor
