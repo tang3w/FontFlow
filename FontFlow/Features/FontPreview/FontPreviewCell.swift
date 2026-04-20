@@ -52,8 +52,8 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         return label
     }()
 
-    private let sampleBackgroundView: NSView = {
-        let view = NSView()
+    private let sampleBackgroundView: SampleBackgroundView = {
+        let view = SampleBackgroundView()
         view.wantsLayer = true
         view.translatesAutoresizingMaskIntoConstraints = false
         view.layer?.cornerRadius = 10
@@ -124,7 +124,7 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         sampleLabel.delegate = nil
         sampleLabel.isEditable = false
         sampleLabel.isSelectable = false
-        sampleBackgroundView.layer?.backgroundColor = nil
+        sampleBackgroundView.backgroundColor = nil
     }
 
     override func preferredLayoutAttributesFitting(_ layoutAttributes: NSCollectionViewLayoutAttributes) -> NSCollectionViewLayoutAttributes {
@@ -153,7 +153,7 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         sampleLabel.font = currentSampleFont
         sampleLabel.textColor = currentTextStyle.resolvedForegroundColor
         sampleLabel.stringValue = currentSampleText
-        sampleBackgroundView.layer?.backgroundColor = currentTextStyle.resolvedBackgroundColor.cgColor
+        sampleBackgroundView.backgroundColor = currentTextStyle.resolvedBackgroundColor
 
         let paragraphStyle = NSMutableParagraphStyle()
         paragraphStyle.lineSpacing = (currentTextStyle.lineSpacingMultiplier - 1.0) * currentSampleFont.pointSize
@@ -184,5 +184,27 @@ class FontPreviewCell: NSCollectionViewItem, NSTextFieldDelegate {
         }
 
         return resolvedFont
+    }
+}
+
+// MARK: - SampleBackgroundView
+
+/// Layer-backed background view that re-resolves its border and background
+/// colors via `updateLayer()` so they track the current effective appearance.
+private final class SampleBackgroundView: NSView {
+
+    var backgroundColor: NSColor? {
+        didSet {
+            guard backgroundColor != oldValue else { return }
+            needsDisplay = true
+        }
+    }
+
+    override var wantsUpdateLayer: Bool { true }
+
+    override func updateLayer() {
+        layer?.backgroundColor = backgroundColor?.cgColor
+        layer?.borderWidth = 1
+        layer?.borderColor = NSColor.separatorColor.cgColor
     }
 }
