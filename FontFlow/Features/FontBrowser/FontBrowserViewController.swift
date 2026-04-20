@@ -63,9 +63,16 @@ enum FontFamilySelectionState {
 }
 
 enum FontFamilySelectionIntent {
-    /// Plain (no-modifier) header click. Replaces selection with the full family.
-    /// If the family is already fully selected, this is a no-op (other selection preserved).
+    /// Plain (no-modifier) header click in the grid. Replaces selection with
+    /// the full family. If the family is already fully selected, this is a
+    /// no-op so other selection is preserved (matches NSCollectionView's
+    /// background-tap semantics).
     case select
+    /// Plain (no-modifier) row click in the list. Always replaces the current
+    /// selection with the family and its typefaces, even when the family is
+    /// already fully selected — matches NSOutlineView's standard replace
+    /// behavior so clicking a section row clears any sibling selection.
+    case selectReplace
     /// Cmd/Shift header click. Toggles: full -> none, otherwise unions the family in.
     case toggleAdditive
 }
@@ -314,6 +321,11 @@ class FontBrowserViewController: NSViewController {
             if currentState == .full {
                 return
             }
+            selectedTypefaceIDs = familySet
+        case .selectReplace:
+            // Always replace the current selection with the family — used by
+            // the list view so plain clicks clear sibling selection even when
+            // the clicked family is already `.full`.
             selectedTypefaceIDs = familySet
         case .toggleAdditive:
             if currentState == .full {

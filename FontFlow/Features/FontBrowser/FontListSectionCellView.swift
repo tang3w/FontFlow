@@ -22,6 +22,8 @@ final class FontListSectionCellView: NSTableCellView {
 
     var onToggle: (() -> Void)?
 
+    private(set) var selectionState: FontFamilySelectionState = .none
+
     private let nameLabel: NSTextField = {
         let label = NSTextField(labelWithString: "")
         label.font = .systemFont(ofSize: 13, weight: .semibold)
@@ -101,12 +103,26 @@ final class FontListSectionCellView: NSTableCellView {
         fatalError("init(coder:) is not supported")
     }
 
-    func configure(familyName: String, count: Int, isCollapsed: Bool, onToggle: @escaping () -> Void) {
+    func configure(
+        familyName: String,
+        count: Int,
+        isCollapsed: Bool,
+        selectionState: FontFamilySelectionState,
+        onToggle: @escaping () -> Void
+    ) {
         nameLabel.stringValue = familyName
         countLabel.stringValue = "\(count)"
         countLabel.toolTip = "\(count) \(count == 1 ? "typeface" : "typefaces")"
         self.onToggle = onToggle
+        self.selectionState = selectionState
+        applySelectionTint()
         updateDisclosureButton(collapsed: isCollapsed)
+    }
+
+    func updateSelectionState(_ newState: FontFamilySelectionState) {
+        guard newState != selectionState else { return }
+        selectionState = newState
+        applySelectionTint()
     }
 
     override func prepareForReuse() {
@@ -115,15 +131,27 @@ final class FontListSectionCellView: NSTableCellView {
         countLabel.stringValue = ""
         countLabel.toolTip = nil
         onToggle = nil
+        selectionState = .none
+        applySelectionTint()
         updateDisclosureButton(collapsed: false)
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        // Consume the event so section rows behave like headers rather than selectable items.
     }
 
     @objc private func handleDisclosureButtonPress(_ sender: NSButton) {
         onToggle?()
+    }
+
+    private func applySelectionTint() {
+        switch selectionState {
+        case .partial:
+            iconView.contentTintColor = .controlAccentColor
+            nameLabel.textColor = .controlAccentColor
+        case .none, .full:
+            // `.full` rows are highlighted by NSOutlineView's system selection,
+            // so we keep the cell's foreground colors at defaults and let the
+            // selection drawing take over.
+            iconView.contentTintColor = .secondaryLabelColor
+            nameLabel.textColor = .labelColor
+        }
     }
 
     private func updateDisclosureButton(collapsed: Bool) {
