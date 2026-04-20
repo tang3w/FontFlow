@@ -270,13 +270,18 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     /// (collapsed sections are handled separately, but we keep the set tidy),
     /// or (c) any of its visible child rows is *not* selected.
     private func reconcileFullySelectedSectionIDs() {
-        let selectedRows = outlineView.selectedRowIndexes
+        var selectedRows = outlineView.selectedRowIndexes
         var nextSelectedSectionIDs = Set<FontFamilyID>()
 
         for row in selectedRows {
             guard let section = outlineView.item(atRow: row) as? FontFamilySection else { continue }
             nextSelectedSectionIDs.insert(section.id)
         }
+
+        restoreDroppedFullySelectedSectionRows(
+            currentSelectedRows: &selectedRows,
+            nextSelectedSectionIDs: &nextSelectedSectionIDs
+        )
 
         // Drop sections whose row is no longer selected.
         fullySelectedSectionIDs.formIntersection(nextSelectedSectionIDs)
@@ -308,6 +313,47 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
                 fullySelectedSectionIDs.insert(familyID)
             }
         }
+    }
+
+    /// Detects sections that *were* fully-selected but whose section row was
+    /// just dropped by NSOutlineView (e.g. the user clicked the sole child of a
+    /// single-typeface family while both rows were selected). If all of a
+    /// section's visible child rows are still selected, the family is logically
+    /// still `.full`, so we re-promote the section row to keep the outline's
+    /// visual state in sync with the canonical selection. Without this, the
+    /// parent's diff-based header refresh sees no state change and the section
+    /// row remains visually deselected.
+    ///
+    /// On return, `currentSelectedRows` and `nextSelectedSectionIDs` are
+    /// updated to reflect any rows that were re-selected.
+    private func restoreDroppedFullySelectedSectionRows(
+        currentSelectedRows: inout IndexSet,
+        nextSelectedSectionIDs: inout Set<FontFamilyID>
+    ) {
+        var rowsToReselect = IndexSet()
+        for familyID in fullySelectedSectionIDs where !nextSelectedSectionIDs.contains(familyID) {
+            guard let section = snapshot.familyByID[familyID],
+                  !collapsedFamilyIDs.contains(familyID),
+                  !section.typefaces.isEmpty else { continue }
+            let allChildrenSelected = section.typefaces.allSatisfy { typeface in
+                let childRow = outlineView.row(forItem: typeface)
+                return childRow >= 0 && currentSelectedRows.contains(childRow)
+            }
+            guard allChildrenSelected else { continue }
+            let sectionRow = outlineView.row(forItem: section)
+            guard sectionRow >= 0 else { continue }
+            rowsToReselect.insert(sectionRow)
+            nextSelectedSectionIDs.insert(familyID)
+        }
+
+        guard !rowsToReselect.isEmpty else { return }
+
+        var combined = currentSelectedRows
+        combined.formUnion(rowsToReselect)
+        isReconcilingSelection = true
+        outlineView.selectRowIndexes(combined, byExtendingSelection: false)
+        isReconcilingSelection = false
+        currentSelectedRows = outlineView.selectedRowIndexes
     }
 
     private func notifySelectionChanged() {
