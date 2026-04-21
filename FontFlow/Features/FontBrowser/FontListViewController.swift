@@ -25,15 +25,8 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     private var snapshot: FontBrowserSnapshot = .empty
     private var collapsedFamilyIDs: Set<FontFamilyID> = []
     private var currentSelectedTypefaceIDs: Set<FontTypefaceID> = []
-    /// Sections whose row is selected in the outline view *and* should be
-    /// treated as fully-expanded (i.e. their typefaces all belong to the
-    /// synthesized selection). Section rows that the user has effectively
-    /// "broken" by Cmd-deselecting one of their children are removed from this
-    /// set, so a later read of the selection no longer expands them.
-    private var fullySelectedSectionIDs: Set<FontFamilyID> = []
     private var isApplyingReload = false
     private var isSynchronizingExpansionState = false
-    private var isReconcilingSelection = false
 
     // MARK: - Lifecycle
 
@@ -56,9 +49,6 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         outlineView.usesAutomaticRowHeights = true
         outlineView.dataSource = self
         outlineView.delegate = self
-        outlineView.onSectionRowClicked = { [weak self] familyID, intent in
-            self?.onFamilySelectionIntent?(familyID, intent)
-        }
 
         let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("FontListColumn"))
         column.title = "Fonts"
@@ -86,7 +76,6 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         self.snapshot = snapshot
         self.collapsedFamilyIDs = collapsedFamilyIDs
         self.currentSelectedTypefaceIDs = selectedTypefaceIDs
-        self.fullySelectedSectionIDs = []
 
         isApplyingReload = true
         outlineView.reloadData()
@@ -123,17 +112,6 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         loadViewIfNeeded()
         currentSelectedTypefaceIDs = selectedTypefaceIDs
 
-        // Reconcile the outline view's selection so that `.full` family rows
-        // are selected (and natively highlighted) while `.partial` / `.none`
-        // family rows are deselected.
-        let desiredRows = desiredSelectedRowIndexes(for: selectedTypefaceIDs)
-        if desiredRows != outlineView.selectedRowIndexes {
-            isReconcilingSelection = true
-            outlineView.selectRowIndexes(desiredRows, byExtendingSelection: false)
-            isReconcilingSelection = false
-        }
-        rebuildFullySelectedSectionIDsFromCanonicalSelection()
-
         // Re-tint the affected section cells so `.partial` shows the accent color.
         for familyID in familyIDs {
             guard let section = snapshot.familyByID[familyID] else { continue }
@@ -167,30 +145,14 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     }
 
     private func restoreSelection(with typefaceIDs: Set<FontTypefaceID>) {
-        let rows = desiredSelectedRowIndexes(for: typefaceIDs)
+        let rows = resolveSelectedRowIndexes(for: typefaceIDs)
         outlineView.selectRowIndexes(rows, byExtendingSelection: false)
-        rebuildFullySelectedSectionIDsFromCanonicalSelection()
-    }
-
-    /// Resets `fullySelectedSectionIDs` to match the outline view's current
-    /// selection. Called after we programmatically install a selection from the
-    /// canonical typeface set, where every selected section row is by
-    /// definition `.full` (and therefore fully-expanded for synthesis).
-    private func rebuildFullySelectedSectionIDsFromCanonicalSelection() {
-        var ids = Set<FontFamilyID>()
-        for row in outlineView.selectedRowIndexes {
-            if let section = outlineView.item(atRow: row) as? FontFamilySection,
-               !collapsedFamilyIDs.contains(section.id) {
-                ids.insert(section.id)
-            }
-        }
-        fullySelectedSectionIDs = ids
     }
 
     /// Computes the set of outline-view rows that should be selected for a given
     /// typeface selection: every selected typeface row, plus the section row of
     /// every family that resolves to `.full`.
-    private func desiredSelectedRowIndexes(for typefaceIDs: Set<FontTypefaceID>) -> IndexSet {
+    private func resolveSelectedRowIndexes(for typefaceIDs: Set<FontTypefaceID>) -> IndexSet {
         var rows = IndexSet()
 
         for typefaceID in typefaceIDs {
@@ -215,201 +177,16 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
 
         return rows
     }
-
-    /// Translates the outline view's current selection into a stable, deduplicated
-    /// list of typefaces.
-    ///
-    /// Selected `FontFamilySection` rows expand into their child typefaces when
-    /// they belong to `fullySelectedSectionIDs` — which is true for sections the
-    /// user just brought into the selection (e.g. via plain click, range
-    /// selection, or because the family already resolved to `.full`). When the
-    /// user Cmd+clicks a child to deselect it, we drop the section from that
-    /// set so the section's lingering visual selection no longer overrides the
-    /// user's intent. Collapsed sections always expand to all typefaces because
-    /// their child rows are not present in the outline.
-    private func selectedTypefaceItems() -> [FontTypefaceItem] {
-        reconcileFullySelectedSectionIDs()
-
-        let selectedRows = outlineView.selectedRowIndexes
-        var includedTypefaces = Set<FontTypefaceID>()
-
-        for row in selectedRows {
-            switch outlineView.item(atRow: row) {
-            case let typeface as FontTypefaceItem:
-                includedTypefaces.insert(typeface.id)
-            case let section as FontFamilySection:
-                let isCollapsed = collapsedFamilyIDs.contains(section.id)
-                if isCollapsed || fullySelectedSectionIDs.contains(section.id) {
-                    for typeface in section.typefaces {
-                        includedTypefaces.insert(typeface.id)
-                    }
-                }
-                // Otherwise the section's selection is "broken" — its child
-                // rows that are individually selected will be picked up by the
-                // FontTypefaceItem branch above.
-            default:
-                continue
-            }
-        }
-
-        // Preserve snapshot order for stability.
-        var ordered: [FontTypefaceItem] = []
-        ordered.reserveCapacity(includedTypefaces.count)
-        for section in snapshot.families {
-            for typeface in section.typefaces where includedTypefaces.contains(typeface.id) {
-                ordered.append(typeface)
-            }
-        }
-        return ordered
-    }
-
-    /// Updates `fullySelectedSectionIDs` to reflect the outline view's current
-    /// selection. A section enters the set when its row becomes selected (and
-    /// stays there as long as no child row is explicitly deselected). A section
-    /// leaves the set when (a) its row is deselected, (b) it is now collapsed
-    /// (collapsed sections are handled separately, but we keep the set tidy),
-    /// or (c) any of its visible child rows is *not* selected.
-    private func reconcileFullySelectedSectionIDs() {
-        var selectedRows = outlineView.selectedRowIndexes
-        var nextSelectedSectionIDs = Set<FontFamilyID>()
-
-        for row in selectedRows {
-            guard let section = outlineView.item(atRow: row) as? FontFamilySection else { continue }
-            nextSelectedSectionIDs.insert(section.id)
-        }
-
-        restoreDroppedFullySelectedSectionRows(
-            currentSelectedRows: &selectedRows,
-            nextSelectedSectionIDs: &nextSelectedSectionIDs
-        )
-
-        // Drop sections whose row is no longer selected.
-        fullySelectedSectionIDs.formIntersection(nextSelectedSectionIDs)
-
-        for familyID in nextSelectedSectionIDs {
-            guard let section = snapshot.familyByID[familyID] else { continue }
-
-            if collapsedFamilyIDs.contains(familyID) {
-                // Collapsed sections are handled implicitly by selectedTypefaceItems
-                // (no child rows to honor); keep them out of the set so they
-                // don't carry stale "fully-selected" status across an expand.
-                fullySelectedSectionIDs.remove(familyID)
-                continue
-            }
-
-            if fullySelectedSectionIDs.contains(familyID) {
-                // Already fully selected: revoke if the user has Cmd-deselected
-                // any of its visible child rows.
-                let allChildrenStillSelected = section.typefaces.allSatisfy { typeface in
-                    let childRow = outlineView.row(forItem: typeface)
-                    return childRow >= 0 && selectedRows.contains(childRow)
-                }
-                if !allChildrenStillSelected {
-                    fullySelectedSectionIDs.remove(familyID)
-                }
-            } else {
-                // Newly selected section row (e.g. via range selection) →
-                // promote to fully-selected so its typefaces join the result.
-                fullySelectedSectionIDs.insert(familyID)
-            }
-        }
-    }
-
-    /// Detects sections that *were* fully-selected but whose section row was
-    /// just dropped by NSOutlineView (e.g. the user clicked the sole child of a
-    /// single-typeface family while both rows were selected). If all of a
-    /// section's visible child rows are still selected, the family is logically
-    /// still `.full`, so we re-promote the section row to keep the outline's
-    /// visual state in sync with the canonical selection. Without this, the
-    /// parent's diff-based header refresh sees no state change and the section
-    /// row remains visually deselected.
-    ///
-    /// On return, `currentSelectedRows` and `nextSelectedSectionIDs` are
-    /// updated to reflect any rows that were re-selected.
-    private func restoreDroppedFullySelectedSectionRows(
-        currentSelectedRows: inout IndexSet,
-        nextSelectedSectionIDs: inout Set<FontFamilyID>
-    ) {
-        var rowsToReselect = IndexSet()
-        for familyID in fullySelectedSectionIDs where !nextSelectedSectionIDs.contains(familyID) {
-            guard let section = snapshot.familyByID[familyID],
-                  !collapsedFamilyIDs.contains(familyID),
-                  !section.typefaces.isEmpty else { continue }
-            let allChildrenSelected = section.typefaces.allSatisfy { typeface in
-                let childRow = outlineView.row(forItem: typeface)
-                return childRow >= 0 && currentSelectedRows.contains(childRow)
-            }
-            guard allChildrenSelected else { continue }
-            let sectionRow = outlineView.row(forItem: section)
-            guard sectionRow >= 0 else { continue }
-            rowsToReselect.insert(sectionRow)
-            nextSelectedSectionIDs.insert(familyID)
-        }
-
-        guard !rowsToReselect.isEmpty else { return }
-
-        var combined = currentSelectedRows
-        combined.formUnion(rowsToReselect)
-        isReconcilingSelection = true
-        outlineView.selectRowIndexes(combined, byExtendingSelection: false)
-        isReconcilingSelection = false
-        currentSelectedRows = outlineView.selectedRowIndexes
-    }
-
-    private func notifySelectionChanged() {
-        onSelectionChanged?(selectedTypefaceItems(), preservesHiddenSelectionForCurrentEvent())
-    }
-
-    private func preservesHiddenSelectionForCurrentEvent() -> Bool {
-        let modifierFlags = NSApp.currentEvent?.modifierFlags.intersection(.deviceIndependentFlagsMask) ?? []
-        return modifierFlags.contains(.command) || modifierFlags.contains(.shift)
-    }
 }
 
 // MARK: - FontListOutlineView
 
 private final class FontListOutlineView: NSOutlineView {
 
-    /// Invoked when a plain or Cmd-clicked section row is intercepted. Shift-clicks
-    /// on section rows are forwarded to `super` so that NSOutlineView's native
-    /// range-extend works across families (the parent then synthesizes the final
-    /// typeface selection from the resulting selected rows).
-    var onSectionRowClicked: ((FontFamilyID, FontFamilySelectionIntent) -> Void)?
-
     /// Suppresses the built-in disclosure triangle.
     /// Expansion/collapse is driven manually via the custom disclosure button on `FontListSectionCellView`.
     override func frameOfOutlineCell(atRow row: Int) -> NSRect {
         .zero
-    }
-
-    override func mouseDown(with event: NSEvent) {
-        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        let location = convert(event.locationInWindow, from: nil)
-        let row = self.row(at: location)
-
-        if row >= 0,
-           let section = item(atRow: row) as? FontFamilySection,
-           !modifiers.contains(.shift) {
-            // Hit-test to ensure the click did not land on the disclosure button
-            // (NSButton normally consumes its own click before reaching us, but
-            // we double-check so chevron presses never get reinterpreted as a
-            // family-selection intent).
-            if let hit = hitTest(event.locationInWindow),
-               hit !== self,
-               !(hit is NSTableRowView),
-               hit is NSButton {
-                super.mouseDown(with: event)
-                return
-            }
-
-            let intent: FontFamilySelectionIntent = modifiers.contains(.command)
-                ? .toggleAdditive
-                : .selectReplace
-            onSectionRowClicked?(section.id, intent)
-            return
-        }
-
-        super.mouseDown(with: event)
     }
 }
 
@@ -449,22 +226,6 @@ extension FontListViewController: NSOutlineViewDataSource {
 
 extension FontListViewController: NSOutlineViewDelegate {
     func outlineView(_ outlineView: NSOutlineView, shouldSelectItem item: Any) -> Bool {
-        // Both `FontTypefaceItem` and `FontFamilySection` rows are selectable.
-        //
-        // Allowing section rows to be selected lets a `.full` family render via
-        // NSOutlineView's native row highlight (so it joins adjacent selected
-        // siblings into a single rounded rectangle), and enables range
-        // selection (Shift+click) to span across family boundaries — picking up
-        // every typeface in the families it crosses.
-        //
-        // Plain and Cmd+clicks on section rows are intercepted upstream in
-        // `FontListOutlineView.mouseDown(with:)` and routed through
-        // `onFamilySelectionIntent` so the family-level select / toggle
-        // semantics (matching the grid view) take precedence over
-        // NSOutlineView's default per-row behavior. The section row's actual
-        // selected/unselected state is then driven canonically by
-        // `refreshFamilyHeaders(for:selectedTypefaceIDs:)` based on the
-        // resolved `FontFamilySelectionState` of the family.
         true
     }
 
@@ -503,7 +264,6 @@ extension FontListViewController: NSOutlineViewDelegate {
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
-        guard !isApplyingReload, !isReconcilingSelection else { return }
-        notifySelectionChanged()
+        // TODO: Rebuild selection handling from scratch.
     }
 }
