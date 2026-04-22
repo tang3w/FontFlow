@@ -230,7 +230,8 @@ extension FontListViewController: NSOutlineViewDelegate {
     }
 
     func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
-        if let section = item as? FontFamilySection {
+        switch item {
+        case let section as FontFamilySection:
             let cell = outlineView.makeView(
                 withIdentifier: FontListSectionCellView.identifier,
                 owner: self
@@ -250,17 +251,19 @@ extension FontListViewController: NSOutlineViewDelegate {
                 }
             )
             return cell
+
+        case let typeface as FontTypefaceItem:
+            let cell = outlineView.makeView(
+                withIdentifier: FontListRowCellView.identifier,
+                owner: self
+            ) as? FontListRowCellView ?? FontListRowCellView()
+            cell.identifier = FontListRowCellView.identifier
+            cell.configure(with: typeface)
+            return cell
+
+        default:
+            return nil
         }
-
-        guard let typeface = item as? FontTypefaceItem else { return nil }
-
-        let cell = outlineView.makeView(
-            withIdentifier: FontListRowCellView.identifier,
-            owner: self
-        ) as? FontListRowCellView ?? FontListRowCellView()
-        cell.identifier = FontListRowCellView.identifier
-        cell.configure(with: typeface)
-        return cell
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
