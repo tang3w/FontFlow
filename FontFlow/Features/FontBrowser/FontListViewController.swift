@@ -25,6 +25,7 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
     private var snapshot: FontBrowserSnapshot = .empty
     private var collapsedFamilyIDs: Set<FontFamilyID> = []
     private var currentSelectedTypefaceIDs: Set<FontTypefaceID> = []
+    private var isApplyingReload = false
     private var isSynchronizingExpansionState = false
     private var selectionResolver: FontListSelectionResolver!
 
@@ -74,6 +75,9 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         reloadingFamilyIDs: Set<FontFamilyID>
     ) {
         loadViewIfNeeded()
+
+        isApplyingReload = true
+        defer { isApplyingReload = false }
 
         self.snapshot = snapshot
         self.collapsedFamilyIDs = collapsedFamilyIDs
@@ -152,6 +156,35 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         selectionResolver.resetCache()
         let rows = selectionResolver.rowIndexes(forTypefaces: typefaceIDs)
         outlineView.selectRowIndexes(rows, byExtendingSelection: false)
+    }
+
+    private func typefacesForCurrentSelection() -> [FontTypefaceItem] {
+        var selectedTypefaces: [FontTypefaceItem] = []
+        var seenTypefaceIDs: Set<FontTypefaceID> = []
+
+        for row in outlineView.selectedRowIndexes {
+            switch outlineView.item(atRow: row) {
+            case let typeface as FontTypefaceItem:
+                guard seenTypefaceIDs.insert(typeface.id).inserted else { continue }
+                selectedTypefaces.append(typeface)
+
+            case let section as FontFamilySection:
+                for typeface in section.typefaces {
+                    guard seenTypefaceIDs.insert(typeface.id).inserted else { continue }
+                    selectedTypefaces.append(typeface)
+                }
+
+            default:
+                continue
+            }
+        }
+
+        return selectedTypefaces
+    }
+
+    private func preservesHiddenSelectionForCurrentEvent() -> Bool {
+        let modifierFlags = NSApp.currentEvent?.modifierFlags.intersection(.deviceIndependentFlagsMask) ?? []
+        return modifierFlags.contains(.command) || modifierFlags.contains(.shift)
     }
 }
 
@@ -271,6 +304,10 @@ extension FontListViewController: NSOutlineViewDelegate {
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
-        // TODO: Rebuild selection handling from scratch.
+        guard !isApplyingReload else { return }
+        onSelectionChanged?(
+            typefacesForCurrentSelection(),
+            preservesHiddenSelectionForCurrentEvent()
+        )
     }
 }
