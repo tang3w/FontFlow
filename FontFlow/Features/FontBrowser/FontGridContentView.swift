@@ -201,6 +201,21 @@ final class FontGridContentView: NSView, NSCollectionViewElement {
         previewCardView.addSubview(previewLabel)
         addSubview(nameLabel)
 
+        // The bottom-pinning constraint is lowered below required priority so the
+        // constraint solver can temporarily relax it while the collection view is
+        // measuring this item at its estimated height. The compositional layout
+        // first sizes the item using `.estimated(...)` (which produces an
+        // intermediate frame whose height is smaller than the chain
+        // `topInset + previewCard(square) + spacing + nameLabel + bottomInset`
+        // can satisfy at the resolved width), then calls
+        // `preferredLayoutAttributesFitting(_:)` to grow the frame to the
+        // fitting size. Keeping this constraint required would make the
+        // intermediate pass unsatisfiable and force AppKit to break the
+        // `previewCardView.height == previewCardView.width` constraint, leaving
+        // the preview card non-square until the next layout pass.
+        let nameLabelBottom = nameLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -LayoutMetrics.bottomInset)
+        nameLabelBottom.priority = .defaultHigh
+
         NSLayoutConstraint.activate([
             previewCardView.topAnchor.constraint(equalTo: topAnchor, constant: LayoutMetrics.previewCardTopInset),
             previewCardView.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -215,7 +230,7 @@ final class FontGridContentView: NSView, NSCollectionViewElement {
             nameLabel.topAnchor.constraint(equalTo: previewCardView.bottomAnchor, constant: LayoutMetrics.nameLabelTopSpacing),
             nameLabel.leadingAnchor.constraint(equalTo: leadingAnchor),
             nameLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
-            nameLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -LayoutMetrics.bottomInset),
+            nameLabelBottom,
         ])
     }
 
