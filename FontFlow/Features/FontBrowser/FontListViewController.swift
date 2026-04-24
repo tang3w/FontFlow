@@ -119,8 +119,19 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         currentSelectedTypefaceIDs = selectedTypefaceIDs
 
         // Re-tint the affected section cells so `.partial` shows the accent color.
-        for familyID in familyIDs {
-            guard let section = snapshot.familyByID[familyID] else { continue }
+        let sections = familyIDs.compactMap { snapshot.familyByID[$0] }
+        applySelectionTints(forFamilies: sections, using: selectedTypefaceIDs)
+    }
+
+    /// Re-tints the visible section header cells for the given families based
+    /// on the supplied typeface selection. Does not mutate
+    /// `currentSelectedTypefaceIDs`; callers that represent a committed
+    /// selection are responsible for updating that baseline themselves.
+    private func applySelectionTints(
+        forFamilies sections: [FontFamilySection],
+        using selectedTypefaceIDs: Set<FontTypefaceID>
+    ) {
+        for section in sections {
             let row = outlineView.row(forItem: section)
             guard row >= 0 else { continue }
             guard let cell = outlineView.view(atColumn: 0, row: row, makeIfNecessary: false)
@@ -309,5 +320,19 @@ extension FontListViewController: NSOutlineViewDelegate {
             typefacesForCurrentSelection(),
             preservesHiddenSelectionForCurrentEvent()
         )
+    }
+
+    /// AppKit posts `selectionIsChanging` continuously during the mouse
+    /// tracking loop but defers `selectionDidChange` until mouse-up. We use
+    /// the in-progress notification to refresh section header tints live so
+    /// a previously `.partial` family loses its accent color as soon as the
+    /// user mouses down on a row in another family. The committed selection
+    /// — and the upstream `onSelectionChanged` notification that drives the
+    /// detail panel — is intentionally still posted only from
+    /// `outlineViewSelectionDidChange`.
+    func outlineViewSelectionIsChanging(_ notification: Notification) {
+        guard !isApplyingReload else { return }
+        let inProgressTypefaceIDs = Set(typefacesForCurrentSelection().map { $0.id })
+        applySelectionTints(forFamilies: snapshot.families, using: inProgressTypefaceIDs)
     }
 }
