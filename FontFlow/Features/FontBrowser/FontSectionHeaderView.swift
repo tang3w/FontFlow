@@ -92,14 +92,10 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
         guard let layer = contentView.layer else { return }
 
         switch selectionState {
-        case .none:
+        case .none, .partial:
             layer.backgroundColor = NSColor.windowBackgroundColor.cgColor
             layer.borderColor = NSColor.separatorColor.cgColor
             layer.borderWidth = 1
-        case .partial:
-            layer.backgroundColor = NSColor.windowBackgroundColor.cgColor
-            layer.borderColor = NSColor.controlAccentColor.cgColor
-            layer.borderWidth = 2
         case .full:
             // Match the standard NSOutlineView (.inset style) selected-row look:
             // a solid, opaque accent fill with no vibrancy and no border.
@@ -124,7 +120,11 @@ class FontSectionHeaderView: NSView, NSCollectionViewElement {
     }
 
     private var foregroundTintColor: NSColor {
-        selectionState == .full ? .alternateSelectedControlTextColor : .headerTextColor
+        switch selectionState {
+        case .full: return .alternateSelectedControlTextColor
+        case .partial: return .controlAccentColor
+        case .none: return .headerTextColor
+        }
     }
 
     private var secondaryForegroundTintColor: NSColor {
