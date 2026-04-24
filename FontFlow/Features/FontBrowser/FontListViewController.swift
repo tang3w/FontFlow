@@ -333,14 +333,24 @@ extension FontListViewController: NSOutlineViewDelegate {
         // which case the section row's presence in `proposed` is
         // authoritative and we must not treat row removals as hole punches.
         let isDragGesture = NSApp.currentEvent?.type == .leftMouseDragged
+        let hasCommandModifier = NSApp.currentEvent?.modifierFlags
+            .intersection(.deviceIndependentFlagsMask)
+            .contains(.command) ?? false
         return selectionResolver.resolve(
             proposed: proposedSelectionIndexes,
-            isDragGesture: isDragGesture
+            isDragGesture: isDragGesture,
+            hasCommandModifier: hasCommandModifier
         )
     }
 
     func outlineViewSelectionDidChange(_ notification: Notification) {
         guard !isApplyingReload else { return }
+        // The current gesture has committed. Drop the resolver's per-gesture
+        // proposal cache so a later gesture that happens to produce the
+        // same `proposed` IndexSet (e.g. Cmd+click on the only typeface of
+        // a single-typeface family, after a plain click selected the
+        // family) is not short-circuited to the stale cached resolution.
+        selectionResolver.resetCache()
         onSelectionChanged?(
             typefacesForCurrentSelection(),
             preservesHiddenSelectionForCurrentEvent()
