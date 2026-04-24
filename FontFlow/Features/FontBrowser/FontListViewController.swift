@@ -61,6 +61,10 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
 
         selectionResolver = FontListSelectionResolver(outlineView: outlineView)
 
+        outlineView.onSectionCommandClick = { [weak self] section in
+            self?.onFamilySelectionIntent?(section.id, .toggleAdditive)
+        }
+
         scrollView.documentView = outlineView
         view = scrollView
     }
@@ -203,10 +207,31 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
 
 private final class FontListOutlineView: NSOutlineView {
 
+    /// Invoked when the user Command-clicks a section row. Lets the host
+    /// route the gesture through the unified `.toggleAdditive` intent so a
+    /// fully-selected family flips to `.none` (which AppKit's selection
+    /// pipeline alone won't do — the typeface rows would remain in the
+    /// proposed selection and `FontListSelectionResolver` would re-inject
+    /// the section row).
+    var onSectionCommandClick: ((FontFamilySection) -> Void)?
+
     /// Suppresses the built-in disclosure triangle.
     /// Expansion/collapse is driven manually via the custom disclosure button on `FontListSectionCellView`.
     override func frameOfOutlineCell(atRow row: Int) -> NSRect {
         .zero
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        if modifiers.contains(.command) {
+            let pointInView = convert(event.locationInWindow, from: nil)
+            let row = row(at: pointInView)
+            if row >= 0, let section = item(atRow: row) as? FontFamilySection {
+                onSectionCommandClick?(section)
+                return
+            }
+        }
+        super.mouseDown(with: event)
     }
 }
 
