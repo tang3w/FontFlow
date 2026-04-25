@@ -64,6 +64,9 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         outlineView.onSectionCommandClick = { [weak self] section in
             self?.onFamilySelectionIntent?(section.id, .toggleAdditive)
         }
+        outlineView.onBackgroundClickWithoutSelectionChange = { [weak self] in
+            self?.handleBackgroundClickWithoutSelectionChange()
+        }
 
         scrollView.documentView = outlineView
         view = scrollView
@@ -201,6 +204,20 @@ class FontListViewController: NSViewController, FontBrowserChildViewControlling 
         let modifierFlags = NSApp.currentEvent?.modifierFlags.intersection(.deviceIndependentFlagsMask) ?? []
         return modifierFlags.contains(.command) || modifierFlags.contains(.shift)
     }
+
+    /// Handles a plain click on list background when AppKit emits no
+    /// row-selection transition (for example, when selected typeface rows
+    /// are currently hidden by collapsed families).
+    private func handleBackgroundClickWithoutSelectionChange() {
+        guard !isApplyingReload else { return }
+        guard !currentSelectedTypefaceIDs.isEmpty else { return }
+
+        outlineView.deselectAll(nil)
+        selectionResolver.resetCache()
+        currentSelectedTypefaceIDs = []
+        applySelectionTints(forFamilies: snapshot.families, using: [])
+        onSelectionChanged?([], false)
+    }
 }
 
 // MARK: - FontListOutlineView
@@ -214,6 +231,7 @@ private final class FontListOutlineView: NSOutlineView {
     /// proposed selection and `FontListSelectionResolver` would re-inject
     /// the section row).
     var onSectionCommandClick: ((FontFamilySection) -> Void)?
+    var onBackgroundClickWithoutSelectionChange: (() -> Void)?
 
     /// Suppresses the built-in disclosure triangle.
     /// Expansion/collapse is driven manually via the custom disclosure button on `FontListSectionCellView`.
@@ -222,6 +240,7 @@ private final class FontListOutlineView: NSOutlineView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        let selectionBeforeClick = selectedRowIndexes
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         if modifiers.contains(.command) {
             let pointInView = convert(event.locationInWindow, from: nil)
@@ -232,6 +251,22 @@ private final class FontListOutlineView: NSOutlineView {
             }
         }
         super.mouseDown(with: event)
+
+        // Match grid semantics for background clicks.
+        if modifiers.contains(.command) || modifiers.contains(.shift) {
+            return
+        }
+
+        let pointInView = convert(event.locationInWindow, from: nil)
+        guard row(at: pointInView) < 0 else { return }
+        // Only fire the callback if AppKit did not already emit a row selection
+        // change during super.mouseDown. This guards against duplicate updates
+        // when clicking on a visible row (which already fires selectionDidChange).
+        // The callback is only needed for the edge case where selected typeface
+        // rows are hidden by collapse and clicking the background produces no
+        // selection transition from AppKit.
+        guard selectedRowIndexes == selectionBeforeClick else { return }
+        onBackgroundClickWithoutSelectionChange?()
     }
 }
 
